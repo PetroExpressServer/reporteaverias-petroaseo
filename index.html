@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Control de Averías y Flota</title>
+    <!-- Google Fonts & Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Local Stylesheet -->
+    <link rel="stylesheet" href="styles.css?v=1.2.2">
+    <!-- Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase Client from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="app-layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="appSidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo-container">
+                    <img src="logo.png" alt="Petroaseo Logo" class="sidebar-logo-img">
+                </div>
+            </div>
+            
+            <ul class="sidebar-menu">
+                <li class="menu-item active" data-target="dashboard">
+                    <button><i class="fas fa-chart-pie"></i><span>Dashboard</span></button>
+                </li>
+                <li class="menu-item" data-target="averias">
+                    <button><i class="fas fa-clipboard-list"></i><span>Registro Averías</span></button>
+                </li>
+                <li class="menu-item" data-target="flota">
+                    <button><i class="fas fa-truck"></i><span>Control de Flota</span></button>
+                </li>
+                <li class="menu-item" data-target="conductores">
+                    <button><i class="fas fa-users"></i><span>Conductores</span></button>
+                </li>
+                <li class="menu-item" data-target="historial">
+                    <button><i class="fas fa-history"></i><span>Historial Placa</span></button>
+                </li>
+                <li class="menu-item" data-target="configuracion">
+                    <button><i class="fas fa-database"></i><span>Base de Datos</span></button>
+                </li>
+            </ul>
+            
+            <div class="sidebar-footer">
+                <span>v1.2.0 &copy; 2026</span>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT CONTAINER -->
+        <div class="main-wrapper">
+            <!-- TOP NAVBAR -->
+            <header class="top-nav">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button class="nav-hamburger" id="sidebarToggle" aria-label="Abrir Menú">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="nav-title-group">
+                        <h2 id="currentPaneTitle">Dashboard de Control</h2>
+                    </div>
+                </div>
+                <div class="nav-profile">
+                    <div class="profile-info">
+                        <div class="profile-name">Supervisor de Patio</div>
+                        <div class="profile-role">Administrador Flota</div>
+                    </div>
+                    <div class="profile-avatar">SP</div>
+                </div>
+            </header>
+
+            <!-- DYNAMIC PANES CONTENT -->
+            <main class="content-body">
+                
+                <!-- 1. DASHBOARD PANE -->
+                <section id="dashboard" class="tab-pane active">
+                    <!-- Stats Grid -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon primary"><i class="fas fa-truck"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-value" id="statTotalUnits">0</span>
+                                <span class="stat-label">Unidades Totales</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon success"><i class="fas fa-check-circle"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-value" id="statOperativeUnits">0</span>
+                                <span class="stat-label">Operativas</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon danger"><i class="fas fa-exclamation-triangle"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-value" id="statInoperativeUnits">0</span>
+                                <span class="stat-label">Inoperativas</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon info"><i class="fas fa-tools"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-value" id="statActiveDefects">0</span>
+                                <span class="stat-label">Averías Activas</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon primary"><i class="fas fa-percent"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-value" id="statAvailabilityRate">0%</span>
+                                <span class="stat-label">Disponibilidad</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts row -->
+                    <div class="charts-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title"><i class="fas fa-chart-line"></i> Tendencia de Reportes de Averías</span>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="chartTrend" style="max-height: 280px;"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title"><i class="fas fa-chart-pie"></i> Severidad de Averías</span>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="chartSeverity" style="max-height: 280px;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="charts-grid-secondary">
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title"><i class="fas fa-chart-bar"></i> Averías por Unidad (Top 10)</span>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="chartPlates" style="max-height: 260px;"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title"><i class="fas fa-cogs"></i> Averías por Sistema Afectado</span>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="chartSystems" style="max-height: 260px;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. AVERIAS PANE -->
+                <section id="averias" class="tab-pane">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title"><i class="fas fa-clipboard-list"></i> Registro de Desperfectos</span>
+                            <button class="btn btn-primary" id="openAddDefectBtn">
+                                <i class="fas fa-plus"></i> Registrar Avería
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <!-- Filters -->
+                            <div class="filter-bar">
+                                <div class="filter-grid">
+                                    <div class="form-group">
+                                        <label for="filterDefectSearch">Buscar</label>
+                                        <input type="text" id="filterDefectSearch" class="form-control" placeholder="Buscar por placa, conductor, desperfecto...">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="filterDefectSystem">Sistema</label>
+                                        <select id="filterDefectSystem" class="form-control">
+                                            <option value="">TODOS</option>
+                                            <option value="ELÉCTRICO">ELÉCTRICO</option>
+                                            <option value="HIDRÁULICO">HIDRÁULICO</option>
+                                            <option value="NEUMÁTICOS">NEUMÁTICOS</option>
+                                            <option value="MOTOR">MOTOR</option>
+                                            <option value="FRENOS">FRENOS</option>
+                                            <option value="OTRO">OTRO</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="filterDefectSeverity">Severidad</label>
+                                        <select id="filterDefectSeverity" class="form-control">
+                                            <option value="">TODAS</option>
+                                            <option value="LEVE">LEVE</option>
+                                            <option value="MODERADO">MODERADO</option>
+                                            <option value="GRAVE">GRAVE</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="filterDefectStatus">Estado</label>
+                                        <select id="filterDefectStatus" class="form-control">
+                                            <option value="">TODOS</option>
+                                            <option value="PENDIENTE">PENDIENTE</option>
+                                            <option value="EN REPORTE">EN REPORTE</option>
+                                            <option value="EN TALLER">EN TALLER</option>
+                                            <option value="REPARADO">REPARADO</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-secondary" id="clearDefectFilters" style="width: 100%;">
+                                            <i class="fas fa-sync-alt"></i> Limpiar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Table Wrapper -->
+                            <div class="table-wrapper">
+                                <table id="defectsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Fecha/Hora</th>
+                                            <th>Placa</th>
+                                            <th>Conductor</th>
+                                            <th>Avería / Falla</th>
+                                            <th>Sistema</th>
+                                            <th>Severidad</th>
+                                            <th>Fecha Rep.</th>
+                                            <th>Días Paro</th>
+                                            <th>Estado</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="defectsTbody">
+                                        <!-- Rendered dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. FLOTA PANE -->
+                <section id="flota" class="tab-pane">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title"><i class="fas fa-truck"></i> Listado de Unidades de la Flota</span>
+                            <button class="btn btn-primary" id="openAddUnitBtn">
+                                <i class="fas fa-plus"></i> Registrar Vehículo
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Placa</th>
+                                            <th>Descripción</th>
+                                            <th>Tipo</th>
+                                            <th>Marca</th>
+                                            <th>Año</th>
+                                            <th>Estado Actual</th>
+                                            <th>Total Averías</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fleetTbody">
+                                        <!-- Rendered dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4. CONDUCTORES PANE -->
+                <section id="conductores" class="tab-pane">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title"><i class="fas fa-users"></i> Conductores Registrados</span>
+                            <button class="btn btn-primary" id="openAddDriverBtn">
+                                <i class="fas fa-user-plus"></i> Registrar Conductor
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <!-- Buscador de Conductores -->
+                            <div class="filter-bar">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label for="filterDriverSearch">Buscar Conductor</label>
+                                    <input type="text" id="filterDriverSearch" class="form-control" placeholder="Buscar por nombre, DNI o número de licencia...">
+                                </div>
+                            </div>
+                            
+                            <div class="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre Completo</th>
+                                            <th>DNI</th>
+                                            <th>N° Licencia</th>
+                                            <th>Contacto / Teléfono</th>
+                                            <th>Total Reportes</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="driversTbody">
+                                        <!-- Rendered dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 5. HISTORIAL PANE -->
+                <section id="historial" class="tab-pane">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title"><i class="fas fa-history"></i> Búsqueda de Historial Operativo</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="filter-bar">
+                                <div class="form-row" style="align-items: flex-end; margin-bottom: 0;">
+                                    <div class="form-group" style="flex: 2;">
+                                        <label for="historyPlateSelect">Seleccionar Unidad (Placa)</label>
+                                        <select id="historyPlateSelect" class="form-control">
+                                            <!-- Loaded dynamically -->
+                                        </select>
+                                    </div>
+                                    <div class="form-group" style="flex: 1;">
+                                        <button class="btn btn-primary" id="searchHistoryBtn" style="width: 100%;">
+                                            <i class="fas fa-search"></i> Buscar Historial
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Vehicle summary box -->
+                            <div id="historyVehicleSummary" style="display: none; margin-bottom: 1.5rem; padding: 1rem; background-color: #fafafa; border: 1px solid var(--border); border-radius: 8px;">
+                                <!-- Dynamic content -->
+                            </div>
+
+                            <div class="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha/Hora</th>
+                                            <th>Conductor</th>
+                                            <th>Desperfecto</th>
+                                            <th>Sistema</th>
+                                            <th>Severidad</th>
+                                            <th>Reparado el</th>
+                                            <th>Días Paro</th>
+                                            <th>Estado</th>
+                                            <th>Observaciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="historyTbody">
+                                        <tr>
+                                            <td colspan="9" style="text-align: center; color: var(--text-muted);">Selecciona una placa para ver su historial.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 6. CONFIGURACION / BASE DE DATOS -->
+                <section id="configuracion" class="tab-pane">
+                    <!-- Tarjeta de Conexion a Supabase -->
+                    <div class="card" style="margin-bottom: 1.5rem;">
+                        <div class="card-header">
+                            <span class="card-title"><i class="fas fa-cloud"></i> Conexión a Supabase Cloud</span>
+                            <span id="supabaseStatusBadge" class="badge badge-pendiente">Desconectado (LocalStorage)</span>
+                        </div>
+                        <div class="card-body">
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                                Ingresa las credenciales de tu proyecto de Supabase para sincronizar en la nube. Las claves se guardan localmente de forma segura en tu navegador y no se subirán al repositorio de GitHub.
+                            </p>
+                            <form id="supabaseConfigForm">
+                                <div class="form-row">
+                                    <div class="form-group" style="flex: 2;">
+                                        <label for="supabaseUrlInput">Supabase URL</label>
+                                        <input type="url" id="supabaseUrlInput" class="form-control" placeholder="https://xxxxxxxxxxxxxx.supabase.co" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group" style="flex: 2;">
+                                        <label for="supabaseKeyInput">Supabase Anon Key (Public Key)</label>
+                                        <input type="text" id="supabaseKeyInput" class="form-control" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." required>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem;">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-link"></i> Guardar y Sincronizar
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="btnDisconnectSupabase">
+                                        <i class="fas fa-unlink"></i> Desconectar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title"><i class="fas fa-database"></i> Copia de Seguridad y Datos del Sistema</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="backup-grid">
+                                <div class="backup-card">
+                                    <i class="fas fa-file-export" style="color: var(--primary);"></i>
+                                    <h3>Exportar Datos</h3>
+                                    <p>Descarga toda la base de datos actual (Averías, Flota y Conductores) en un solo archivo de respaldo JSON.</p>
+                                    <button class="btn btn-primary" id="btnExportData">
+                                        <i class="fas fa-download"></i> Guardar Respaldo
+                                    </button>
+                                </div>
+
+                                <div class="backup-card">
+                                    <i class="fas fa-file-import" style="color: var(--secondary);"></i>
+                                    <h3>Importar Datos</h3>
+                                    <p>Restaura una copia de seguridad cargando tu archivo de respaldo JSON generado previamente.</p>
+                                    <input type="file" id="importFileInput" accept=".json" style="display: none;">
+                                    <button class="btn btn-secondary" id="btnImportTrigger">
+                                        <i class="fas fa-upload"></i> Subir Respaldo
+                                    </button>
+                                </div>
+
+                                <div class="backup-card">
+                                    <i class="fas fa-trash-alt" style="color: var(--color-taller);"></i>
+                                    <h3>Limpieza y Semilla</h3>
+                                    <p>Borra la base de datos de este navegador y vuelve a cargar los datos originales de demostración.</p>
+                                    <button class="btn btn-danger" id="btnResetDatabase">
+                                        <i class="fas fa-undo"></i> Restablecer por Defecto
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+       MODALS
+       ========================================================================== -->
+
+    <!-- A. MODAL AVERIA (AGREGAR/EDITAR) -->
+    <div class="modal" id="defectModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="defectModalTitle">Registrar Nueva Avería</h3>
+                <button class="modal-close closeModalBtn"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="defectForm">
+                <div class="modal-body">
+                    <input type="hidden" id="defectId">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="defectDate">Fecha de Reporte</label>
+                            <input type="date" id="defectDate" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="defectTime">Hora de Reporte</label>
+                            <input type="time" id="defectTime" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="defectPlate">Unidad (Placa)</label>
+                            <select id="defectPlate" class="form-control" required>
+                                <!-- Loaded dynamically -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="defectDriver">Conductor</label>
+                            <select id="defectDriver" class="form-control" required>
+                                <!-- Loaded dynamically -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="defectDescription">Descripción de la Avería / Falla</label>
+                        <textarea id="defectDescription" class="form-control" required placeholder="Escriba los desperfectos de la unidad..."></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="defectSystem">Sistema Afectado</label>
+                            <select id="defectSystem" class="form-control" required>
+                                <option value="ELÉCTRICO">ELÉCTRICO</option>
+                                <option value="HIDRÁULICO">HIDRÁULICO</option>
+                                <option value="NEUMÁTICOS">NEUMÁTICOS</option>
+                                <option value="MOTOR">MOTOR</option>
+                                <option value="FRENOS">FRENOS</option>
+                                <option value="OTRO">OTRO</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="defectSeverity">Severidad</label>
+                            <select id="defectSeverity" class="form-control" required>
+                                <option value="LEVE">LEVE</option>
+                                <option value="MODERADO" selected>MODERADO</option>
+                                <option value="GRAVE">GRAVE</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="defectStatus">Estado de la Avería</label>
+                            <select id="defectStatus" class="form-control" required>
+                                <option value="PENDIENTE">PENDIENTE</option>
+                                <option value="EN REPORTE">EN REPORTE</option>
+                                <option value="EN TALLER">EN TALLER (Inoperativa)</option>
+                                <option value="REPARADO">REPARADO</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row" id="repairFields" style="display: none; padding: 0.75rem; background-color: var(--primary-light); border-radius: 6px; border: 1px solid var(--border);">
+                        <div class="form-group">
+                            <label for="defectRepairDate">Fecha de Reparación</label>
+                            <input type="date" id="defectRepairDate" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="defectRepairTime">Hora de Reparación</label>
+                            <input type="time" id="defectRepairTime" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label for="defectObservations">Observaciones de Mecánica / Resolución</label>
+                        <input type="text" id="defectObservations" class="form-control" placeholder="Detalles de reparación o repuestos solicitados...">
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary closeModalBtn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Registro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- B. MODAL VEHICULO (AGREGAR/EDITAR) -->
+    <div class="modal" id="unitModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="unitModalTitle">Registrar Vehículo en Flota</h3>
+                <button class="modal-close closeModalBtn"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="unitForm">
+                <div class="modal-body">
+                    <input type="hidden" id="unitIsEdit" value="false">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="unitPlate">Placa / N° Unidad</label>
+                            <input type="text" id="unitPlate" class="form-control" required placeholder="Ej: BWR-724">
+                        </div>
+                        <div class="form-group">
+                            <label for="unitDesc">Descripción</label>
+                            <input type="text" id="unitDesc" class="form-control" required placeholder="Ej: Unidad Compacta 1">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="unitType">Tipo de Unidad</label>
+                            <select id="unitType" class="form-control" required>
+                                <option value="COMPACTA">COMPACTA</option>
+                                <option value="CISTERNA">CISTERNA</option>
+                                <option value="HIDROLAVADO">HIDROLAVADO</option>
+                                <option value="BARANDA">BARANDA</option>
+                                <option value="BARREDORA MECÁNICA">BARREDORA MECÁNICA</option>
+                                <option value="FREGADORA MECÁNICA">FREGADORA MECÁNICA</option>
+                                <option value="CISTERNA COMBUSTIBLE">CISTERNA COMBUSTIBLE</option>
+                                <option value="OTRO">OTRO</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="unitBrand">Marca</label>
+                            <input type="text" id="unitBrand" class="form-control" required placeholder="Ej: SHACMAN">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="unitYear">Año de Fabricación</label>
+                            <input type="text" id="unitYear" class="form-control" required placeholder="Ej: 2024">
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary closeModalBtn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Vehículo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- C. MODAL CONDUCTOR (AGREGAR/EDITAR) -->
+    <div class="modal" id="driverModal">
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3 id="driverModalTitle">Registrar Conductor</h3>
+                <button class="modal-close closeModalBtn"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="driverForm">
+                <div class="modal-body">
+                    <input type="hidden" id="driverIsEdit" value="false">
+                    <input type="hidden" id="driverOldName">
+                    
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="driverName">Nombre Completo</label>
+                        <input type="text" id="driverName" class="form-control" required placeholder="Ej: ARAUJO QUISPE EDGAR">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="driverDni">DNI</label>
+                            <input type="text" id="driverDni" class="form-control" placeholder="Ej: 45678912">
+                        </div>
+                        <div class="form-group">
+                            <label for="driverLicense">Licencia de Conducir</label>
+                            <input type="text" id="driverLicense" class="form-control" placeholder="Ej: Q12345678">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="driverContact">Contacto / Teléfono</label>
+                        <input type="text" id="driverContact" class="form-control" placeholder="Ej: 987654321">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary closeModalBtn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Conductor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript logic link -->
+    <script src="app.js?v=1.2.5" defer></script>
+</body>
+</html>

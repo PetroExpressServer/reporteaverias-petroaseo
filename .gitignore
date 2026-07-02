@@ -1,0 +1,6 @@
+# Ignore personal scanned documents
+CO ACTAS DE CONSTATACION DEL 30 DE JUNIO/
+
+# Ignore local backup/restoration files
+*.json
+!package.json
