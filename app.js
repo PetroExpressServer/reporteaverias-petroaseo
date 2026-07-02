@@ -717,11 +717,12 @@ function renderDefectsTable(defectsList) {
         return;
     }
 
-    // Sort descending by date & time
+    // Sort descending by date & time (newest first, fallback to ID descending)
     const sorted = [...defectsList].sort((a, b) => {
-        const datetimeA = new Date(a.dateReport + "T" + a.timeReport);
-        const datetimeB = new Date(b.dateReport + "T" + b.timeReport);
-        return datetimeB - datetimeA;
+        const timeA = new Date(a.dateReport + "T" + a.timeReport).getTime();
+        const timeB = new Date(b.dateReport + "T" + b.timeReport).getTime();
+        if (isNaN(timeA) || isNaN(timeB)) return b.id - a.id;
+        return timeB - timeA || b.id - a.id;
     });
 
     sorted.forEach(d => {
@@ -1307,11 +1308,12 @@ function handleHistorySearch() {
         return;
     }
 
-    // Sort descending by date & time
+    // Sort descending by date & time (newest first, fallback to ID descending)
     const sorted = [...unitDefects].sort((a, b) => {
-        const datetimeA = new Date(a.dateReport + "T" + a.timeReport);
-        const datetimeB = new Date(b.dateReport + "T" + b.timeReport);
-        return datetimeB - datetimeA;
+        const timeA = new Date(a.dateReport + "T" + a.timeReport).getTime();
+        const timeB = new Date(b.dateReport + "T" + b.timeReport).getTime();
+        if (isNaN(timeA) || isNaN(timeB)) return b.id - a.id;
+        return timeB - timeA || b.id - a.id;
     });
 
     sorted.forEach(d => {
