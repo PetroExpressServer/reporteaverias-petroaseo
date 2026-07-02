@@ -75,6 +75,9 @@ let charts = {
 };
 
 // --- SUPABASE CLIENT & HELPER FUNCTIONS ---
+const DEFAULT_SUPABASE_URL = "https://ojblhasbhhpgrxgxdnpc.supabase.co";
+const DEFAULT_SUPABASE_KEY = "sb_publishable_fbgbaYccFB96zCLaGye3kQ_Nrc7gvRl";
+
 let supabaseClient = null;
 
 function dbDefectToJS(row) {
@@ -191,8 +194,16 @@ function initDatabase() {
     }
 
     // Connect to Supabase if config exists
-    const url = localStorage.getItem("supabase_url");
-    const key = localStorage.getItem("supabase_key");
+    const isDisabled = localStorage.getItem("supabase_disabled") === "true";
+    let url = localStorage.getItem("supabase_url");
+    let key = localStorage.getItem("supabase_key");
+    
+    // Fallback to defaults if not disabled and no custom key is saved
+    if (!url && !key && !isDisabled) {
+        url = DEFAULT_SUPABASE_URL;
+        key = DEFAULT_SUPABASE_KEY;
+    }
+    
     if (url && key && window.supabase) {
         try {
             supabaseClient = window.supabase.createClient(url, key);
@@ -359,6 +370,7 @@ function setupEventListeners() {
             if (urlVal && keyVal) {
                 localStorage.setItem("supabase_url", urlVal);
                 localStorage.setItem("supabase_key", keyVal);
+                localStorage.removeItem("supabase_disabled"); // Re-enable if previously disabled
                 alert("Credenciales guardadas localmente. Conectando a Supabase...");
                 await initDatabase();
             }
@@ -371,6 +383,7 @@ function setupEventListeners() {
             if (confirm("¿Estás seguro de desconectar Supabase? El sistema volverá a trabajar únicamente con LocalStorage.")) {
                 localStorage.removeItem("supabase_url");
                 localStorage.removeItem("supabase_key");
+                localStorage.setItem("supabase_disabled", "true"); // Prevent default fallback on refresh
                 supabaseClient = null;
                 updateSupabaseStatus(false);
                 document.getElementById("supabaseUrlInput").value = "";
