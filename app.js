@@ -340,12 +340,26 @@ function setupEventListeners() {
             
             // Close sidebar on mobile after clicking
             document.getElementById("appSidebar").classList.remove("show-mobile");
+            document.getElementById("sidebarBackdrop").classList.remove("show-mobile");
         });
     });
 
     // Mobile Hamburger
     document.getElementById("sidebarToggle").addEventListener("click", () => {
         document.getElementById("appSidebar").classList.toggle("show-mobile");
+        document.getElementById("sidebarBackdrop").classList.toggle("show-mobile");
+    });
+
+    // Close Mobile Sidebar button
+    document.getElementById("sidebarCloseBtn").addEventListener("click", () => {
+        document.getElementById("appSidebar").classList.remove("show-mobile");
+        document.getElementById("sidebarBackdrop").classList.remove("show-mobile");
+    });
+
+    // Mobile Backdrop overlay click
+    document.getElementById("sidebarBackdrop").addEventListener("click", () => {
+        document.getElementById("appSidebar").classList.remove("show-mobile");
+        document.getElementById("sidebarBackdrop").classList.remove("show-mobile");
     });
 
     // Close Modals

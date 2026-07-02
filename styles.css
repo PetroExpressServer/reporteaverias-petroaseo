@@ -737,6 +737,24 @@ textarea.form-control {
     transform: translateX(0) !important;
 }
 
+/* Sidebar mobile close button & backdrop defaults */
+.sidebar-close-btn {
+    display: none;
+}
+
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(15, 23, 42, 0.4);
+    z-index: 95;
+    backdrop-filter: blur(2px);
+    transition: var(--transition);
+}
+
 /* ==========================================================================
    RESPONSIVE MEDIA QUERIES
    ========================================================================== */
@@ -759,6 +777,26 @@ textarea.form-control {
         transform: translateX(-100%);
         height: 100vh;
         box-shadow: 10px 0 30px rgba(0, 0, 0, 0.05);
+    }
+    
+    .sidebar-close-btn {
+        display: block;
+        background: none;
+        border: none;
+        font-size: 1.3rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 0.5rem;
+        margin-left: auto;
+        transition: var(--transition);
+    }
+    
+    .sidebar-close-btn:hover {
+        color: var(--primary);
+    }
+
+    .sidebar-backdrop.show-mobile {
+        display: block;
     }
     
     .nav-hamburger {
