@@ -1583,12 +1583,12 @@ function exportFleetToPDF() {
             textColor: [51, 65, 85]
         },
         columnStyles: {
-            0: { fontStyle: 'bold', cellWidth: 25 },
-            1: { cellWidth: 55 },
-            2: { cellWidth: 30 },
-            3: { cellWidth: 35 },
-            4: { fontStyle: 'bold', cellWidth: 30 },
-            5: { halign: 'center', cellWidth: 20 }
+            0: { fontStyle: 'bold', cellWidth: 22 }, // Placa
+            1: { cellWidth: 'auto' },                // Descripción
+            2: { cellWidth: 25 },                    // Tipo
+            3: { cellWidth: 33 },                    // Marca / Año
+            4: { fontStyle: 'bold', cellWidth: 28 }, // Estado Actual
+            5: { halign: 'center', cellWidth: 20 }   // Total Averías
         },
         margin: { left: 15, right: 15 },
         didParseCell: function(data) {
@@ -1717,17 +1717,17 @@ function exportDefectsToPDF() {
             textColor: [51, 65, 85]
         },
         columnStyles: {
-            0: { fontStyle: 'bold', cellWidth: 12 },
-            1: { cellWidth: 20 },
-            2: { fontStyle: 'bold', cellWidth: 18 },
-            3: { cellWidth: 35 },
-            4: { cellWidth: 50 },
-            5: { cellWidth: 20 },
-            6: { cellWidth: 18 },
-            7: { cellWidth: 18 },
-            8: { cellWidth: 25 },
-            9: { fontStyle: 'bold', cellWidth: 20 },
-            10: { cellWidth: 35 }
+            0: { fontStyle: 'bold', cellWidth: 12 },  // ID
+            1: { cellWidth: 20 },                    // Fecha/Hora
+            2: { fontStyle: 'bold', cellWidth: 18 },  // Placa
+            3: { cellWidth: 30 },                    // Conductor
+            4: { cellWidth: 'auto' },                // Avería / Falla
+            5: { cellWidth: 20 },                    // Sistema
+            6: { cellWidth: 18 },                    // Severidad
+            7: { cellWidth: 18 },                    // Fecha Rep.
+            8: { cellWidth: 25 },                    // Inactividad
+            9: { fontStyle: 'bold', cellWidth: 20 },  // Estado
+            10: { cellWidth: 'auto' }                // Observaciones
         },
         margin: { left: 15, right: 15 },
         didParseCell: function(data) {
