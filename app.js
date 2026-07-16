@@ -1489,27 +1489,59 @@ function exportFleetToPDF() {
     doc.setFillColor(248, 250, 252); // Background Slate-50
     doc.roundedRect(15, 42, pageWidth - 30, 16, 2, 2, 'F');
 
-    doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
+    const colCenters = [45, 105, 165];
+
+    // Col 1: Total Vehículos
+    const l1 = "Total Vehículos: ";
+    const v1 = `${totalUnits}`;
+    doc.setFont("helvetica", "bold");
+    const wL1 = doc.getTextWidth(l1);
+    doc.setFont("helvetica", "normal");
+    const wV1 = doc.getTextWidth(v1);
+    const totalW1 = wL1 + wV1;
+    const startX1 = colCenters[0] - (totalW1 / 2);
+
+    doc.setFont("helvetica", "bold");
     doc.setTextColor(71, 85, 105);
-    doc.text(`Total Vehículos:`, 20, 52);
+    doc.text(l1, startX1, 52);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(15, 23, 42);
-    doc.text(`${totalUnits}`, 46, 52);
+    doc.text(v1, startX1 + wL1, 52);
+
+    // Col 2: Operativas
+    const l2 = "Operativas: ";
+    const v2 = `${operativeUnits} (${totalUnits > 0 ? Math.round((operativeUnits/totalUnits)*100) : 0}%)`;
+    doc.setFont("helvetica", "bold");
+    const wL2 = doc.getTextWidth(l2);
+    doc.setFont("helvetica", "normal");
+    const wV2 = doc.getTextWidth(v2);
+    const totalW2 = wL2 + wV2;
+    const startX2 = colCenters[1] - (totalW2 / 2);
 
     doc.setFont("helvetica", "bold");
     doc.setTextColor(71, 85, 105);
-    doc.text(`Operativas:`, 80, 52);
+    doc.text(l2, startX2, 52);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(22, 101, 52); // Green-700
-    doc.text(`${operativeUnits} (${totalUnits > 0 ? Math.round((operativeUnits/totalUnits)*100) : 0}%)`, 99, 52);
+    doc.text(v2, startX2 + wL2, 52);
+
+    // Col 3: Inoperativas
+    const l3 = "Inoperativas (Taller): ";
+    const v3 = `${inoperativeUnits} (${totalUnits > 0 ? Math.round((inoperativeUnits/totalUnits)*100) : 0}%)`;
+    doc.setFont("helvetica", "bold");
+    const wL3 = doc.getTextWidth(l3);
+    doc.setFont("helvetica", "normal");
+    const wV3 = doc.getTextWidth(v3);
+    const totalW3 = wL3 + wV3;
+    const startX3 = colCenters[2] - (totalW3 / 2);
 
     doc.setFont("helvetica", "bold");
     doc.setTextColor(71, 85, 105);
-    doc.text(`Inoperativas (Taller):`, 140, 52);
+    doc.text(l3, startX3, 52);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(185, 28, 28); // Red-700
-    doc.text(`${inoperativeUnits} (${totalUnits > 0 ? Math.round((inoperativeUnits/totalUnits)*100) : 0}%)`, 173, 52);
+    doc.text(v3, startX3 + wL3, 52);
 
     // 3. Populate Data
     const sortedFleet = [...state.fleet].sort((a, b) => {
