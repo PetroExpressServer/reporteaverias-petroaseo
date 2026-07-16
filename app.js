@@ -447,6 +447,10 @@ function setupEventListeners() {
             }
         });
     }
+
+    // PDF Exports
+    document.getElementById("exportFleetPdfBtn").addEventListener("click", exportFleetToPDF);
+    document.getElementById("exportDefectsPdfBtn").addEventListener("click", exportDefectsToPDF);
 }
 
 function switchPane(paneId) {
@@ -1412,4 +1416,319 @@ function escapeHtml(str) {
               .replace(/>/g, "&gt;")
               .replace(/"/g, "&quot;")
               .replace(/'/g, "&#039;");
+}
+
+// --- PDF EXPORTS ---
+function getFilteredDefectsList() {
+    const query = document.getElementById("filterDefectSearch").value.toLowerCase();
+    const system = document.getElementById("filterDefectSystem").value;
+    const severity = document.getElementById("filterDefectSeverity").value;
+    const status = document.getElementById("filterDefectStatus").value;
+
+    return state.defects.filter(d => {
+        const obsText = d.obs ? d.obs.toLowerCase() : "";
+        const matchesQuery = d.plate.toLowerCase().includes(query) ||
+                             d.driver.toLowerCase().includes(query) ||
+                             d.description.toLowerCase().includes(query) ||
+                             obsText.includes(query) ||
+                             String(d.id).includes(query);
+                             
+        const matchesSystem = system === "" || d.system === system;
+        const matchesSeverity = severity === "" || d.severity === severity;
+        const matchesStatus = status === "" || d.status === status;
+
+        return matchesQuery && matchesSystem && matchesSeverity && matchesStatus;
+    });
+}
+
+function exportFleetToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // 1. Header (Petroaseo Identity)
+    doc.setFillColor(217, 20, 57); // Carmine #d91439
+    doc.rect(15, 15, 8, 8, 'F');
+    
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(30, 41, 59); // Slate-800
+    doc.text("PETROASEO", 26, 21.5);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139); // Slate-500
+    doc.text("Sistema de Control de Flota y Averías", 26, 26);
+
+    // Metadata
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-PE');
+    const timeStr = now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+    
+    doc.setFontSize(8.5);
+    doc.setTextColor(71, 85, 105); // Slate-600
+    doc.text(`Fecha: ${dateStr} ${timeStr}`, pageWidth - 15, 21.5, { align: 'right' });
+    doc.text("Generado por: Supervisor de Patio", pageWidth - 15, 26, { align: 'right' });
+
+    // Divider
+    doc.setDrawColor(226, 232, 240); // Slate-200
+    doc.setLineWidth(0.5);
+    doc.line(15, 30, pageWidth - 15, 30);
+
+    // Title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42); // Slate-900
+    doc.text("REPORTE GENERAL DE ESTADO DE FLOTA", 15, 38);
+
+    // 2. Summary Metrics Block
+    const totalUnits = state.fleet.length;
+    const operativeUnits = state.fleet.filter(u => getUnitOperationalStatus(u.plate) === "OPERATIVA").length;
+    const inoperativeUnits = totalUnits - operativeUnits;
+
+    doc.setFillColor(248, 250, 252); // Background Slate-50
+    doc.roundedRect(15, 42, pageWidth - 30, 16, 2, 2, 'F');
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Total Vehículos:`, 20, 52);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${totalUnits}`, 46, 52);
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Operativas:`, 80, 52);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(22, 101, 52); // Green-700
+    doc.text(`${operativeUnits} (${totalUnits > 0 ? Math.round((operativeUnits/totalUnits)*100) : 0}%)`, 99, 52);
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Inoperativas (Taller):`, 140, 52);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(185, 28, 28); // Red-700
+    doc.text(`${inoperativeUnits} (${totalUnits > 0 ? Math.round((inoperativeUnits/totalUnits)*100) : 0}%)`, 173, 52);
+
+    // 3. Populate Data
+    const sortedFleet = [...state.fleet].sort((a, b) => {
+        const isACompacta = a.type === "COMPACTA";
+        const isBCompacta = b.type === "COMPACTA";
+        if (isACompacta && !isBCompacta) return -1;
+        if (!isACompacta && isBCompacta) return 1;
+        if (a.type !== b.type) return a.type.localeCompare(b.type);
+        return a.plate.localeCompare(b.plate);
+    });
+
+    const rows = sortedFleet.map(u => {
+        const totalIncidents = state.defects.filter(d => d.plate === u.plate).length;
+        const opStatus = getUnitOperationalStatus(u.plate);
+        return [
+            u.plate,
+            u.desc,
+            u.type,
+            `${u.brand} / ${u.year}`,
+            opStatus,
+            totalIncidents.toString()
+        ];
+    });
+
+    doc.autoTable({
+        head: [["Placa", "Descripción", "Tipo", "Marca / Año", "Estado Actual", "Total Averías"]],
+        body: rows,
+        startY: 65,
+        theme: 'grid',
+        headStyles: {
+            fillColor: [217, 20, 57], // Carmine Red
+            textColor: [255, 255, 255],
+            fontSize: 9,
+            fontStyle: 'bold',
+            halign: 'left'
+        },
+        bodyStyles: {
+            fontSize: 8.5,
+            textColor: [51, 65, 85]
+        },
+        columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 25 },
+            1: { cellWidth: 55 },
+            2: { cellWidth: 30 },
+            3: { cellWidth: 35 },
+            4: { fontStyle: 'bold', cellWidth: 30 },
+            5: { halign: 'center', cellWidth: 20 }
+        },
+        margin: { left: 15, right: 15 },
+        didParseCell: function(data) {
+            if (data.column.index === 4) { // Estado column
+                if (data.cell.raw === 'OPERATIVA') {
+                    data.cell.styles.textColor = [22, 101, 52];
+                } else if (data.cell.raw === 'INOPERATIVA') {
+                    data.cell.styles.textColor = [185, 28, 28];
+                }
+            }
+        }
+    });
+
+    // 4. Page numbers
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        doc.text(`Página ${i} de ${totalPages}`, pageWidth - 15, doc.internal.pageSize.getHeight() - 10, { align: 'right' });
+        doc.text("Petroaseo - Reporte de Control de Flota", 15, doc.internal.pageSize.getHeight() - 10);
+    }
+
+    const filenameDate = now.toISOString().split('T')[0];
+    doc.save(`Reporte_Flota_Petroaseo_${filenameDate}.pdf`);
+}
+
+function exportDefectsToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'mm', 'a4'); // landscape
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    // 1. Header
+    doc.setFillColor(217, 20, 57);
+    doc.rect(15, 15, 8, 8, 'F');
+    
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(30, 41, 59);
+    doc.text("PETROASEO", 26, 21.5);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text("Sistema de Control de Flota y Averías", 26, 26);
+
+    // Metadata
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-PE');
+    const timeStr = now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+    
+    doc.setFontSize(8.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Fecha: ${dateStr} ${timeStr}`, pageWidth - 15, 21.5, { align: 'right' });
+    doc.text("Generado por: Supervisor de Patio", pageWidth - 15, 26, { align: 'right' });
+
+    // Divider
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.5);
+    doc.line(15, 30, pageWidth - 15, 30);
+
+    // Title & Active Filters
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text("REPORTE HISTÓRICO DE AVERÍAS Y DESPERFECTOS", 15, 38);
+
+    const query = document.getElementById("filterDefectSearch").value;
+    const system = document.getElementById("filterDefectSystem").value;
+    const severity = document.getElementById("filterDefectSeverity").value;
+    const status = document.getElementById("filterDefectStatus").value;
+
+    let filterLabel = "Filtros aplicados: Ninguno";
+    const activeFilters = [];
+    if (query) activeFilters.push(`Búsqueda: "${query}"`);
+    if (system) activeFilters.push(`Sistema: ${system}`);
+    if (severity) activeFilters.push(`Severidad: ${severity}`);
+    if (status) activeFilters.push(`Estado: ${status}`);
+    
+    if (activeFilters.length > 0) {
+        filterLabel = "Filtros aplicados: " + activeFilters.join(" | ");
+    }
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(filterLabel, 15, 43);
+
+    // 2. Fetch Data
+    const defectsList = getFilteredDefectsList();
+    const sortedDefects = [...defectsList].sort((a, b) => b.id - a.id);
+
+    const rows = sortedDefects.map(d => {
+        const formattedDays = d.daysStop !== "" && d.daysStop !== undefined ? d.daysStop : "-";
+        return [
+            `#${d.id}`,
+            `${d.dateReport}\n${d.timeReport}`,
+            d.plate,
+            d.driver || "-",
+            d.description,
+            d.system,
+            d.severity,
+            d.dateRepair || "-",
+            formattedDays,
+            d.status,
+            d.obs || "-"
+        ];
+    });
+
+    doc.autoTable({
+        head: [["ID", "Fecha/Hora", "Placa", "Conductor", "Avería / Falla", "Sistema", "Severidad", "Fecha Rep.", "Inactividad", "Estado", "Observaciones"]],
+        body: rows,
+        startY: 47,
+        theme: 'grid',
+        headStyles: {
+            fillColor: [217, 20, 57],
+            textColor: [255, 255, 255],
+            fontSize: 8,
+            fontStyle: 'bold',
+            halign: 'left'
+        },
+        bodyStyles: {
+            fontSize: 7.5,
+            textColor: [51, 65, 85]
+        },
+        columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 12 },
+            1: { cellWidth: 20 },
+            2: { fontStyle: 'bold', cellWidth: 18 },
+            3: { cellWidth: 35 },
+            4: { cellWidth: 50 },
+            5: { cellWidth: 20 },
+            6: { cellWidth: 18 },
+            7: { cellWidth: 18 },
+            8: { cellWidth: 25 },
+            9: { fontStyle: 'bold', cellWidth: 20 },
+            10: { cellWidth: 35 }
+        },
+        margin: { left: 15, right: 15 },
+        didParseCell: function(data) {
+            if (data.column.index === 9) { // Estado column
+                const val = data.cell.raw;
+                if (val === 'REPARADO') {
+                    data.cell.styles.textColor = [22, 101, 52];
+                } else if (val === 'PENDIENTE') {
+                    data.cell.styles.textColor = [185, 28, 28];
+                } else if (val === 'EN TALLER') {
+                    data.cell.styles.textColor = [217, 119, 6];
+                }
+            } else if (data.column.index === 6) { // Severidad column
+                const val = data.cell.raw;
+                if (val === 'GRAVE') {
+                    data.cell.styles.textColor = [185, 28, 28];
+                    data.cell.styles.fontStyle = 'bold';
+                }
+            }
+        }
+    });
+
+    // 3. Footer page numbering
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        doc.text(`Página ${i} de ${totalPages}`, pageWidth - 15, pageHeight - 10, { align: 'right' });
+        doc.text("Petroaseo - Registro de Averías y Desperfectos", 15, pageHeight - 10);
+    }
+
+    const filenameDate = now.toISOString().split('T')[0];
+    doc.save(`Reporte_Averias_Petroaseo_${filenameDate}.pdf`);
 }
