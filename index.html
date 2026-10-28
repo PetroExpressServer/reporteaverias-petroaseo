@@ -266,6 +266,22 @@
                             </div>
                         </div>
                         <div class="card-body">
+                            <!-- Filters for Fleet -->
+                            <div class="filter-bar">
+                                <div class="filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label for="filterFleetType"><i class="fas fa-filter"></i> Tipo de Unidad</label>
+                                        <select id="filterFleetType" class="form-control">
+                                            <option value="">TODOS (Todas las unidades)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label for="filterFleetSearch"><i class="fas fa-search"></i> Buscar Vehículo</label>
+                                        <input type="text" id="filterFleetSearch" class="form-control" placeholder="Buscar por placa, modelo, marca...">
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="table-wrapper">
                                 <table>
                                     <thead>

@@ -189,6 +189,16 @@ function updateSupabaseStatus(isConnected, text = null) {
     }
 }
 
+function renderAll() {
+    updateDashboardMetrics();
+    renderDashboardCharts();
+    populateFleetTypeFilter();
+    renderFleetTable();
+    renderDefectsTable(state.defects);
+    renderDriversTable();
+    populateHistoryPlateSelect();
+}
+
 // --- INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
     initDatabase();
@@ -383,6 +393,10 @@ function setupEventListeners() {
     // SUBMIT FORM - VEHICLES
     document.getElementById("unitForm").addEventListener("submit", handleUnitSubmit);
     document.getElementById("openAddUnitBtn").addEventListener("click", () => openUnitModal());
+    const filterFleetTypeEl = document.getElementById("filterFleetType");
+    if (filterFleetTypeEl) filterFleetTypeEl.addEventListener("change", renderFleetTable);
+    const filterFleetSearchEl = document.getElementById("filterFleetSearch");
+    if (filterFleetSearchEl) filterFleetSearchEl.addEventListener("input", renderFleetTable);
 
     // SUBMIT FORM - DRIVERS
     document.getElementById("driverForm").addEventListener("submit", handleDriverSubmit);
@@ -474,6 +488,7 @@ function switchPane(paneId) {
     } else if (paneId === "averias") {
         renderDefectsTable(state.defects);
     } else if (paneId === "flota") {
+        populateFleetTypeFilter();
         renderFleetTable();
     } else if (paneId === "conductores") {
         renderDriversTable();
@@ -931,16 +946,66 @@ function deleteDefect(id) {
 }
 
 // --- FLOTA TAB RENDERING & CRUD ---
+function populateFleetTypeFilter() {
+    const select = document.getElementById("filterFleetType");
+    if (!select) return;
+
+    const currentVal = select.value;
+    const defaultTypes = [
+        "COMPACTA", "CISTERNA", "HIDROLAVADO", "BARANDA", 
+        "BARREDORA MECÁNICA", "FREGADORA MECÁNICA", "CISTERNA COMBUSTIBLE", "OTRO"
+    ];
+    const fleetTypes = state.fleet.map(u => u.type).filter(Boolean);
+    const uniqueTypes = Array.from(new Set([...defaultTypes, ...fleetTypes]));
+
+    uniqueTypes.sort((a, b) => {
+        if (a === "COMPACTA") return -1;
+        if (b === "COMPACTA") return 1;
+        return a.localeCompare(b);
+    });
+
+    select.innerHTML = `<option value="">TODOS (Todas las unidades - ${state.fleet.length})</option>`;
+    uniqueTypes.forEach(type => {
+        const count = state.fleet.filter(u => u.type === type).length;
+        const opt = document.createElement("option");
+        opt.value = type;
+        opt.textContent = `${type} (${count})`;
+        select.appendChild(opt);
+    });
+
+    if (currentVal && (uniqueTypes.includes(currentVal) || currentVal === "")) {
+        select.value = currentVal;
+    }
+}
+
 function renderFleetTable() {
     const tbody = document.getElementById("fleetTbody");
     tbody.innerHTML = "";
 
     if (state.fleet.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">No hay vehículos registrados en la flota.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No hay vehículos registrados en la flota.</td></tr>`;
         return;
     }
 
-    const sortedFleet = [...state.fleet].sort((a, b) => {
+    const typeFilter = document.getElementById("filterFleetType") ? document.getElementById("filterFleetType").value : "";
+    const searchFilter = document.getElementById("filterFleetSearch") ? document.getElementById("filterFleetSearch").value.trim().toLowerCase() : "";
+
+    const filteredFleet = state.fleet.filter(u => {
+        const matchesType = !typeFilter || u.type === typeFilter;
+        const matchesSearch = !searchFilter ||
+            (u.plate && u.plate.toLowerCase().includes(searchFilter)) ||
+            (u.desc && u.desc.toLowerCase().includes(searchFilter)) ||
+            (u.brand && u.brand.toLowerCase().includes(searchFilter)) ||
+            (u.year && u.year.toString().toLowerCase().includes(searchFilter));
+        return matchesType && matchesSearch;
+    });
+
+    if (filteredFleet.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No se encontraron vehículos para el tipo o criterio de búsqueda seleccionado.</td></tr>`;
+        return;
+    }
+
+    const sortedFleet = [...filteredFleet].sort((a, b) => {
         const isACompacta = a.type === "COMPACTA";
         const isBCompacta = b.type === "COMPACTA";
         
@@ -1075,6 +1140,7 @@ function handleUnitSubmit(e) {
 
     saveToLocalStorage();
     closeAllModals();
+    populateFleetTypeFilter();
     renderFleetTable();
 }
 
@@ -1084,6 +1150,7 @@ function deleteUnit(plate) {
     state.defects = state.defects.filter(d => d.plate !== plate);
     
     saveToLocalStorage();
+    populateFleetTypeFilter();
     renderFleetTable();
     
     if (supabaseClient) {
@@ -1475,15 +1542,19 @@ function exportFleetToPDF() {
     doc.setLineWidth(0.5);
     doc.line(15, 30, pageWidth - 15, 30);
 
-    // Title
+    // Title & Filters
+    const typeFilter = document.getElementById("filterFleetType") ? document.getElementById("filterFleetType").value : "";
+    const filteredFleet = typeFilter ? state.fleet.filter(u => u.type === typeFilter) : state.fleet;
+    const reportTitle = typeFilter ? `REPORTE DE FLOTA - TIPO: ${typeFilter}` : "REPORTE GENERAL DE ESTADO DE FLOTA";
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.setTextColor(15, 23, 42); // Slate-900
-    doc.text("REPORTE GENERAL DE ESTADO DE FLOTA", 15, 38);
+    doc.text(reportTitle, 15, 38);
 
     // 2. Summary Metrics Block
-    const totalUnits = state.fleet.length;
-    const operativeUnits = state.fleet.filter(u => getUnitOperationalStatus(u.plate) === "OPERATIVA").length;
+    const totalUnits = filteredFleet.length;
+    const operativeUnits = filteredFleet.filter(u => getUnitOperationalStatus(u.plate) === "OPERATIVA").length;
     const inoperativeUnits = totalUnits - operativeUnits;
 
     doc.setFillColor(248, 250, 252); // Background Slate-50
@@ -1544,7 +1615,7 @@ function exportFleetToPDF() {
     doc.text(v3, startX3 + wL3, 52);
 
     // 3. Populate Data
-    const sortedFleet = [...state.fleet].sort((a, b) => {
+    const sortedFleet = [...filteredFleet].sort((a, b) => {
         const isACompacta = a.type === "COMPACTA";
         const isBCompacta = b.type === "COMPACTA";
         if (isACompacta && !isBCompacta) return -1;
@@ -1614,7 +1685,8 @@ function exportFleetToPDF() {
     }
 
     const filenameDate = now.toISOString().split('T')[0];
-    doc.save(`Reporte_Flota_Petroaseo_${filenameDate}.pdf`);
+    const fileSuffix = typeFilter ? `_${typeFilter.replace(/[^a-zA-Z0-9]/g, '_')}` : '';
+    doc.save(`Reporte_Flota_Petroaseo${fileSuffix}_${filenameDate}.pdf`);
 }
 
 function exportDefectsToPDF() {
