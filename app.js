@@ -99,11 +99,18 @@ const defectsSeed = [
     { id: 53, dateReport: "2026-06-29", timeReport: "06:38", plate: "BZV-736", driver: "QUISPE PERALES CHRISTHIAN AMERICO", description: "Fuga de hidrolina por manguera hidraulica", system: "HIDRÁULICO", severity: "GRAVE", dateRepair: "2026-06-29", timeRepair: "13:15", status: "REPARADO", obs: "", daysStop: "6 horas y 37 min" }
 ];
 
+// --- AUTH CREDENTIALS ---
+const COORDINATOR_AUTH = {
+    email: "coordinador@petro.pe",
+    password: "PetroExpress7*"
+};
+
 // --- APP STATE ---
 let state = {
     fleet: [],
     drivers: [],
-    defects: []
+    defects: [],
+    isAdminAuthenticated: false
 };
 
 // --- CHART INSTANCES ---
@@ -190,13 +197,32 @@ function updateSupabaseStatus(isConnected, text = null) {
 }
 
 function renderAll() {
+    initAuthAndViews();
+    populateDriverPortalSelectors();
     updateDashboardMetrics();
     renderDashboardCharts();
     populateFleetTypeFilter();
     renderFleetTable();
-    renderDefectsTable(state.defects);
+    filterDefectsTable();
     renderDriversTable();
     populateHistoryPlateSelect();
+    renderInboxTable();
+}
+
+function initAuthAndViews() {
+    const isAuth = sessionStorage.getItem("petro_admin_auth") === "true";
+    state.isAdminAuthenticated = isAuth;
+
+    const portalSec = document.getElementById("driverPortalSection");
+    const adminLayout = document.getElementById("adminAppLayout");
+
+    if (isAuth) {
+        if (portalSec) portalSec.style.display = "none";
+        if (adminLayout) adminLayout.style.display = "flex";
+    } else {
+        if (portalSec) portalSec.style.display = "flex";
+        if (adminLayout) adminLayout.style.display = "none";
+    }
 }
 
 // --- INITIALIZATION ---
@@ -372,6 +398,92 @@ function setupEventListeners() {
         document.getElementById("sidebarBackdrop").classList.remove("show-mobile");
     });
 
+    // PORTAL CONDUCTORES & AUTH LISTENERS
+    const btnOpenLogin = document.getElementById("btnOpenLoginModal");
+    if (btnOpenLogin) {
+        btnOpenLogin.addEventListener("click", () => {
+            const loginModal = document.getElementById("loginModal");
+            const alertEl = document.getElementById("loginErrorAlert");
+            if (alertEl) alertEl.style.display = "none";
+            document.getElementById("coordinatorLoginForm").reset();
+            if (loginModal) loginModal.style.display = "flex";
+        });
+    }
+
+    const btnCloseLogin = document.getElementById("btnCloseLoginModal");
+    if (btnCloseLogin) {
+        btnCloseLogin.addEventListener("click", () => {
+            const loginModal = document.getElementById("loginModal");
+            if (loginModal) loginModal.style.display = "none";
+        });
+    }
+
+    const loginForm = document.getElementById("coordinatorLoginForm");
+    if (loginForm) {
+        loginForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+            const password = document.getElementById("loginPassword").value.trim();
+            const alertEl = document.getElementById("loginErrorAlert");
+
+            if (email === COORDINATOR_AUTH.email.toLowerCase() && password === COORDINATOR_AUTH.password) {
+                sessionStorage.setItem("petro_admin_auth", "true");
+                state.isAdminAuthenticated = true;
+                const loginModal = document.getElementById("loginModal");
+                if (loginModal) loginModal.style.display = "none";
+                initAuthAndViews();
+                renderAll();
+                switchPane("dashboard");
+            } else {
+                if (alertEl) {
+                    alertEl.style.display = "block";
+                    alertEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Credenciales incorrectas. Verifica el correo y la contraseña.';
+                }
+            }
+        });
+    }
+
+    const btnLogout = document.getElementById("btnAdminLogout");
+    if (btnLogout) {
+        btnLogout.addEventListener("click", () => {
+            if (confirm("¿Deseas cerrar sesión de Coordinación y volver al Portal de Conductores?")) {
+                sessionStorage.removeItem("petro_admin_auth");
+                state.isAdminAuthenticated = false;
+                initAuthAndViews();
+                resetDriverPortalForm();
+            }
+        });
+    }
+
+    // SUBMIT DRIVER PORTAL REPORT
+    const driverPortalForm = document.getElementById("driverPortalForm");
+    if (driverPortalForm) {
+        driverPortalForm.addEventListener("submit", handleDriverPortalSubmit);
+    }
+
+    const btnNewReport = document.getElementById("btnNewDriverReport");
+    if (btnNewReport) {
+        btnNewReport.addEventListener("click", () => {
+            resetDriverPortalForm();
+        });
+    }
+
+    // INBOX REVIEW ACTIONS
+    const filterInboxStatusEl = document.getElementById("filterInboxStatus");
+    if (filterInboxStatusEl) filterInboxStatusEl.addEventListener("change", renderInboxTable);
+    const filterInboxSearchEl = document.getElementById("filterInboxSearch");
+    if (filterInboxSearchEl) filterInboxSearchEl.addEventListener("input", renderInboxTable);
+
+    const btnApproveInbox = document.getElementById("btnApproveInboxReport");
+    if (btnApproveInbox) {
+        btnApproveInbox.addEventListener("click", handleApproveInboxReport);
+    }
+
+    const btnRejectInbox = document.getElementById("btnRejectInboxReport");
+    if (btnRejectInbox) {
+        btnRejectInbox.addEventListener("click", handleRejectInboxReport);
+    }
+
     // Close Modals
     document.querySelectorAll(".closeModalBtn").forEach(btn => {
         btn.addEventListener("click", (e) => {
@@ -474,7 +586,8 @@ function switchPane(paneId) {
     // Update Top Title
     const paneTitleMap = {
         "dashboard": "Dashboard de Control",
-        "averias": "Registro de Averías de Unidades",
+        "inbox": "Bandeja de Reportes de Conductores",
+        "averias": "Registro Oficial de Averías de Unidades",
         "flota": "Control de Flota y Estado Operativo",
         "conductores": "Gestión de Conductores",
         "historial": "Historial de Incidencias",
@@ -485,8 +598,10 @@ function switchPane(paneId) {
     if (paneId === "dashboard") {
         updateDashboardMetrics();
         renderDashboardCharts();
+    } else if (paneId === "inbox") {
+        renderInboxTable();
     } else if (paneId === "averias") {
-        renderDefectsTable(state.defects);
+        filterDefectsTable();
     } else if (paneId === "flota") {
         populateFleetTypeFilter();
         renderFleetTable();
@@ -581,7 +696,8 @@ function updateDashboardMetrics() {
     });
 
     const operativeCount = totalUnits - inoperativeCount;
-    const activeDefects = state.defects.filter(d => d.status !== "REPARADO").length;
+    // Official active defects (excluding ones awaiting driver review or rejected)
+    const activeDefects = state.defects.filter(d => d.status !== "REPARADO" && d.status !== "POR REVISAR" && d.status !== "DENEGADO").length;
     const availabilityRate = totalUnits > 0 ? Math.round((operativeCount / totalUnits) * 100) : 0;
 
     document.getElementById("statTotalUnits").innerText = totalUnits;
@@ -808,11 +924,15 @@ function filterDefectsTable() {
     const severity = document.getElementById("filterDefectSeverity").value;
     const status = document.getElementById("filterDefectStatus").value;
 
-    const filtered = state.defects.filter(d => {
+    // Filter only official defects (exclude those in review or rejected by coordinator)
+    const officialDefects = state.defects.filter(d => d.status !== "POR REVISAR" && d.status !== "DENEGADO");
+
+    const filtered = officialDefects.filter(d => {
+        const obsText = d.obs ? d.obs.toLowerCase() : "";
         const matchesQuery = d.plate.toLowerCase().includes(query) ||
                              d.driver.toLowerCase().includes(query) ||
                              d.description.toLowerCase().includes(query) ||
-                             d.obs.toLowerCase().includes(query) ||
+                             obsText.includes(query) ||
                              String(d.id).includes(query);
                              
         const matchesSystem = system === "" || d.system === system;
@@ -1485,6 +1605,217 @@ function escapeHtml(str) {
               .replace(/'/g, "&#039;");
 }
 
+// --- DRIVER PORTAL ---
+function populateDriverPortalSelectors() {
+    const driverSel = document.getElementById("portalDriverName");
+    const plateSel = document.getElementById("portalPlate");
+    if (!driverSel || !plateSel) return;
+    const sortedDrivers = [...state.drivers].sort((a, b) => a.name.localeCompare(b.name));
+    driverSel.innerHTML = '<option value="">-- Selecciona tu Nombre --</option>' +
+        sortedDrivers.map(d => `<option value="${escapeHtml(d.name)}">${escapeHtml(d.name)}</option>`).join("");
+    plateSel.innerHTML = '<option value="">-- Selecciona la Placa --</option>' +
+        state.fleet.map(u => `<option value="${escapeHtml(u.plate)}">${escapeHtml(u.plate)} - ${escapeHtml(u.desc)}</option>`).join("");
+}
+
+function resetDriverPortalForm() {
+    const form = document.getElementById("driverPortalForm");
+    if (form) form.reset();
+    const reportCard = document.getElementById("driverReportCard");
+    const successCard = document.getElementById("driverSuccessCard");
+    if (reportCard) reportCard.style.display = "block";
+    if (successCard) successCard.style.display = "none";
+}
+
+async function handleDriverPortalSubmit(e) {
+    e.preventDefault();
+    const btn = document.getElementById("btnSubmitPortalReport");
+    if (!btn) return;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+    const now = new Date();
+    const dateVal = now.toISOString().slice(0, 10);
+    const timeVal = now.toTimeString().slice(0, 5);
+    const driverVal = document.getElementById("portalDriverName").value;
+    const plateVal = document.getElementById("portalPlate").value;
+    const systemVal = document.getElementById("portalSystem").value;
+    const severityVal = document.getElementById("portalSeverity").value;
+    const descVal = document.getElementById("portalDescription").value.trim();
+
+    if (!driverVal || !plateVal || !systemVal || !severityVal || !descVal) {
+        alert("Por favor completa todos los campos antes de enviar.");
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Reporte de Avería';
+        return;
+    }
+
+    const nextId = state.defects.length > 0 ? Math.max(...state.defects.map(d => d.id)) + 1 : 1;
+    const newReport = {
+        id: nextId,
+        dateReport: dateVal,
+        timeReport: timeVal,
+        plate: plateVal,
+        driver: driverVal,
+        description: descVal,
+        system: systemVal,
+        severity: severityVal,
+        status: "POR REVISAR",
+        dateRepair: "",
+        timeRepair: "",
+        obs: "Enviado desde portal de conductores",
+        daysStop: ""
+    };
+
+    state.defects.push(newReport);
+    saveToLocalStorage();
+
+    if (supabaseClient) {
+        supabaseClient.from('defects').insert(jsDefectToDB(newReport)).then(({ error }) => {
+            if (error) console.error("Error al guardar reporte de conductor:", error);
+        });
+    }
+
+    // Show success summary
+    const summary = document.getElementById("driverSuccessSummary");
+    if (summary) {
+        summary.innerHTML = `
+            <div class="driver-summary-row"><span class="label">Conductor:</span><span class="value">${escapeHtml(driverVal)}</span></div>
+            <div class="driver-summary-row"><span class="label">Unidad:</span><span class="value">${escapeHtml(plateVal)}</span></div>
+            <div class="driver-summary-row"><span class="label">Sistema:</span><span class="value">${escapeHtml(systemVal)} / ${escapeHtml(severityVal)}</span></div>
+            <div class="driver-summary-row"><span class="label">Fecha/Hora:</span><span class="value">${dateVal} ${timeVal}</span></div>
+            <div class="driver-summary-row"><span class="label">Falla reportada:</span><span class="value">${escapeHtml(descVal)}</span></div>
+        `;
+    }
+    const reportCard = document.getElementById("driverReportCard");
+    const successCard = document.getElementById("driverSuccessCard");
+    if (reportCard) reportCard.style.display = "none";
+    if (successCard) successCard.style.display = "block";
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Reporte de Avería';
+}
+
+// --- INBOX (BANDEJA DE REPORTES DE CONDUCTORES) ---
+function renderInboxTable() {
+    const tbody = document.getElementById("inboxTbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    const statusFilter = document.getElementById("filterInboxStatus") ? document.getElementById("filterInboxStatus").value : "POR REVISAR";
+    const searchFilter = document.getElementById("filterInboxSearch") ? document.getElementById("filterInboxSearch").value.trim().toLowerCase() : "";
+
+    let inbox = state.defects.filter(d => {
+        if (statusFilter === "TODOS") return d.status === "POR REVISAR" || d.status === "DENEGADO";
+        return d.status === statusFilter;
+    });
+
+    if (searchFilter) {
+        inbox = inbox.filter(d =>
+            (d.plate || "").toLowerCase().includes(searchFilter) ||
+            (d.driver || "").toLowerCase().includes(searchFilter) ||
+            (d.description || "").toLowerCase().includes(searchFilter)
+        );
+    }
+
+    // Update badges
+    const pendingCount = state.defects.filter(d => d.status === "POR REVISAR").length;
+    const badge = document.getElementById("inboxPendingBadge");
+    const counterBadge = document.getElementById("inboxCounterBadge");
+    if (badge) {
+        badge.textContent = pendingCount;
+        badge.style.display = pendingCount > 0 ? "inline-block" : "none";
+    }
+    if (counterBadge) counterBadge.textContent = `${pendingCount} pendientes`;
+
+    if (inbox.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:2rem;">No hay reportes en esta bandeja.</td></tr>`;
+        return;
+    }
+
+    const sorted = [...inbox].sort((a, b) => b.id - a.id);
+    sorted.forEach(d => {
+        const tr = document.createElement("tr");
+        const statusClass = d.status === "POR REVISAR" ? "badge-por-revisar" : "badge-denegado";
+        const sevClass = `badge-${(d.severity || "").toLowerCase()}`;
+        tr.innerHTML = `
+            <td><div style="font-weight:500;">${escapeHtml(d.dateReport)}</div><div style="font-size:0.75rem;color:var(--text-muted);">${escapeHtml(d.timeReport)}</div></td>
+            <td><strong>${escapeHtml(d.plate)}</strong></td>
+            <td>${escapeHtml(d.driver || "-")}</td>
+            <td style="max-width:220px;">${escapeHtml(d.description)}</td>
+            <td>${escapeHtml(d.system)}</td>
+            <td><span class="badge ${sevClass}">${escapeHtml(d.severity)}</span></td>
+            <td><span class="badge ${statusClass}">${escapeHtml(d.status)}</span></td>
+            <td style="text-align:center;">
+                ${d.status === "POR REVISAR"
+                    ? `<button class="btn btn-primary btn-sm reviewInboxBtn" data-id="${d.id}" style="font-size:0.8rem;padding:0.4rem 0.75rem;"><i class="fas fa-eye"></i> Revisar</button>`
+                    : `<span style="color:var(--text-muted);font-size:0.8rem;">Procesado</span>`}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll(".reviewInboxBtn").forEach(btn => {
+        btn.addEventListener("click", () => openInboxReviewModal(parseInt(btn.dataset.id)));
+    });
+}
+
+function openInboxReviewModal(id) {
+    const d = state.defects.find(def => def.id === id);
+    if (!d) return;
+    document.getElementById("inboxReviewDefectId").value = id;
+    document.getElementById("reviewModalDateTime").textContent = `${d.dateReport} ${d.timeReport}`;
+    document.getElementById("reviewModalDriver").textContent = d.driver || "-";
+    document.getElementById("reviewModalPlate").textContent = d.plate;
+    document.getElementById("reviewModalSystem").textContent = `${d.system} / ${d.severity}`;
+    document.getElementById("reviewModalDescription").textContent = d.description;
+    document.getElementById("reviewCoordinatorObs").value = "";
+    document.getElementById("reviewAssignStatus").value = "EN REPORTE";
+    document.getElementById("inboxReviewModal").style.display = "flex";
+}
+
+function handleApproveInboxReport() {
+    const id = parseInt(document.getElementById("inboxReviewDefectId").value);
+    const newStatus = document.getElementById("reviewAssignStatus").value;
+    const obs = document.getElementById("reviewCoordinatorObs").value.trim();
+    const idx = state.defects.findIndex(d => d.id === id);
+    if (idx === -1) return;
+
+    state.defects[idx].status = newStatus;
+    if (obs) state.defects[idx].obs = obs;
+
+    saveToLocalStorage();
+    if (supabaseClient) {
+        supabaseClient.from('defects').upsert(jsDefectToDB(state.defects[idx])).then(({ error }) => {
+            if (error) console.error("Error al aprobar reporte:", error);
+        });
+    }
+    closeAllModals();
+    renderInboxTable();
+    filterDefectsTable();
+    updateDashboardMetrics();
+}
+
+function handleRejectInboxReport() {
+    const id = parseInt(document.getElementById("inboxReviewDefectId").value);
+    const obs = document.getElementById("reviewCoordinatorObs").value.trim();
+    const idx = state.defects.findIndex(d => d.id === id);
+    if (idx === -1) return;
+
+    state.defects[idx].status = "DENEGADO";
+    if (obs) state.defects[idx].obs = obs;
+
+    saveToLocalStorage();
+    if (supabaseClient) {
+        supabaseClient.from('defects').upsert(jsDefectToDB(state.defects[idx])).then(({ error }) => {
+            if (error) console.error("Error al denegar reporte:", error);
+        });
+    }
+    closeAllModals();
+    renderInboxTable();
+    filterDefectsTable();
+    updateDashboardMetrics();
+}
+
 // --- PDF EXPORTS ---
 function getFilteredDefectsList() {
     const query = document.getElementById("filterDefectSearch").value.toLowerCase();
@@ -1493,6 +1824,9 @@ function getFilteredDefectsList() {
     const status = document.getElementById("filterDefectStatus").value;
 
     return state.defects.filter(d => {
+        // Exclude driver portal drafts from PDF exports
+        if (d.status === "POR REVISAR" || d.status === "DENEGADO") return false;
+
         const obsText = d.obs ? d.obs.toLowerCase() : "";
         const matchesQuery = d.plate.toLowerCase().includes(query) ||
                              d.driver.toLowerCase().includes(query) ||

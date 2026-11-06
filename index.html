@@ -19,7 +19,118 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
-    <div class="app-layout">
+    <!-- ==========================================================================
+         PORTAL DE REPORTES PARA CONDUCTORES (PANTALLA DE CARGA INICIAL)
+         ========================================================================== -->
+    <div id="driverPortalSection" class="driver-portal-container">
+        <!-- Top bar of driver portal -->
+        <header class="driver-portal-header">
+            <div class="driver-portal-logo">
+                <img src="logo.png" alt="Petroaseo Logo">
+                <div class="driver-portal-logo-text">
+                    <h1>PETROASEO</h1>
+                    <p>Portal Operativo de Conductores</p>
+                </div>
+            </div>
+            <button class="btn-coordinator-access" id="btnOpenLoginModal">
+                <i class="fas fa-lock"></i>
+                <span>Acceso Coordinación</span>
+            </button>
+        </header>
+
+        <!-- Main body of driver portal -->
+        <main class="driver-portal-body">
+            <!-- Form Card -->
+            <div class="driver-portal-card" id="driverReportCard">
+                <div class="driver-portal-card-header">
+                    <span class="header-badge"><i class="fas fa-tools"></i> Mantenimiento y Patio</span>
+                    <h2>Reporte de Avería de Unidad</h2>
+                    <p>Completa los datos del vehículo y el desperfecto presentado para revisión del taller.</p>
+                </div>
+
+                <div class="driver-portal-card-body">
+                    <form id="driverPortalForm">
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 1;">
+                                <label for="portalDriverName"><i class="fas fa-user"></i> Conductor a Cargo</label>
+                                <select id="portalDriverName" class="form-control" required>
+                                    <option value="">-- Selecciona tu Nombre --</option>
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label for="portalPlate"><i class="fas fa-truck"></i> Unidad / Placa</label>
+                                <select id="portalPlate" class="form-control" required>
+                                    <option value="">-- Selecciona la Placa --</option>
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 1;">
+                                <label for="portalSystem"><i class="fas fa-cogs"></i> Sistema Afectado</label>
+                                <select id="portalSystem" class="form-control" required>
+                                    <option value="HIDRÁULICO">HIDRÁULICO</option>
+                                    <option value="ELÉCTRICO">ELÉCTRICO</option>
+                                    <option value="MOTOR">MOTOR</option>
+                                    <option value="NEUMÁTICOS">NEUMÁTICOS</option>
+                                    <option value="FRENOS">FRENOS</option>
+                                    <option value="CAJA DE CAMBIOS">CAJA DE CAMBIOS</option>
+                                    <option value="ESTRUCTURA">ESTRUCTURA</option>
+                                    <option value="CARROCERÍA">CARROCERÍA</option>
+                                    <option value="CAJON COMPACTADOR">CAJON COMPACTADOR</option>
+                                    <option value="LISFTHER">LISFTHER</option>
+                                    <option value="OTRO">OTRO</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label for="portalSeverity"><i class="fas fa-exclamation-triangle"></i> Severidad</label>
+                                <select id="portalSeverity" class="form-control" required>
+                                    <option value="LEVE">LEVE (Puede continuar operando con precaución)</option>
+                                    <option value="MODERADO" selected>MODERADO (Requiere atención próxima)</option>
+                                    <option value="GRAVE">GRAVE (Unidad detenida / Inoperativa)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
+                            <label for="portalDescription"><i class="fas fa-comment-alt"></i> Detalle de la Avería o Falla</label>
+                            <textarea id="portalDescription" class="form-control" rows="3" required placeholder="Describe con claridad la falla observada (ej: Fuga de hidrolina por manguera del lifther, sonido extraño en caja, etc.)..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn-portal-submit" id="btnSubmitPortalReport">
+                            <i class="fas fa-paper-plane"></i> Enviar Reporte de Avería
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Success Card (Hidden by default) -->
+            <div class="driver-portal-card" id="driverSuccessCard" style="display: none;">
+                <div class="driver-success-card">
+                    <div class="success-icon-wrap">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <h3>¡Reporte Enviado con Éxito!</h3>
+                    <p>Tu reporte ha sido registrado y enviado al área de Coordinación para su revisión y asignación a taller.</p>
+                    
+                    <div class="driver-summary-box" id="driverSuccessSummary">
+                        <!-- Summary details rendered dynamically -->
+                    </div>
+
+                    <button type="button" class="btn btn-primary" id="btnNewDriverReport" style="padding: 0.85rem 1.75rem; font-weight: 700; border-radius: 10px;">
+                        <i class="fas fa-plus"></i> Registrar Otro Reporte
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ==========================================================================
+         SISTEMA ADMINISTRATIVO DE CONTROL (PROTEGIDO POR CREDENCIALES)
+         ========================================================================== -->
+    <div class="app-layout" id="adminAppLayout" style="display: none;">
         <!-- SIDEBAR -->
         <aside class="sidebar" id="appSidebar">
             <div class="sidebar-header">
@@ -34,6 +145,13 @@
             <ul class="sidebar-menu">
                 <li class="menu-item active" data-target="dashboard">
                     <button><i class="fas fa-chart-pie"></i><span>Dashboard</span></button>
+                </li>
+                <li class="menu-item" data-target="inbox">
+                    <button>
+                        <i class="fas fa-inbox"></i>
+                        <span>Bandeja Choferes</span>
+                        <span class="menu-badge" id="inboxPendingBadge" style="display: none;">0</span>
+                    </button>
                 </li>
                 <li class="menu-item" data-target="averias">
                     <button><i class="fas fa-clipboard-list"></i><span>Registro Averías</span></button>
@@ -70,12 +188,17 @@
                         <h2 id="currentPaneTitle">Dashboard de Control</h2>
                     </div>
                 </div>
-                <div class="nav-profile">
-                    <div class="profile-info">
-                        <div class="profile-name">Supervisor de Patio</div>
-                        <div class="profile-role">Administrador Flota</div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <button class="btn-logout" id="btnAdminLogout" title="Cerrar Sesión de Coordinador">
+                        <i class="fas fa-sign-out-alt"></i> <span>Salir al Portal</span>
+                    </button>
+                    <div class="nav-profile">
+                        <div class="profile-info">
+                            <div class="profile-name">Coordinador Petroaseo</div>
+                            <div class="profile-role">coordinador@petro.pe</div>
+                        </div>
+                        <div class="profile-avatar">CP</div>
                     </div>
-                    <div class="profile-avatar">SP</div>
                 </div>
             </header>
 
@@ -158,6 +281,62 @@
                             </div>
                             <div class="card-body">
                                 <canvas id="chartSystems" style="max-height: 260px;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- BANDEJA DE ENTRADA: REPORTES DE CONDUCTORES (PRE-APROBACIÓN) -->
+                <section id="inbox" class="tab-pane">
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <span class="card-title"><i class="fas fa-inbox"></i> Bandeja de Reportes de Conductores</span>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                                    Reportes enviados desde el portal público de choferes. Revisa y aprueba para pasarlos al cuadro oficial de averías.
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <span class="badge badge-por-revisar" id="inboxCounterBadge">0 pendientes</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Filters for Inbox -->
+                            <div class="filter-bar">
+                                <div class="filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label for="filterInboxStatus"><i class="fas fa-filter"></i> Estado en Bandeja</label>
+                                        <select id="filterInboxStatus" class="form-control">
+                                            <option value="POR REVISAR">POR REVISAR (Pendientes)</option>
+                                            <option value="DENEGADO">DENEGADOS</option>
+                                            <option value="TODOS">TODOS LOS REPORTES</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label for="filterInboxSearch"><i class="fas fa-search"></i> Buscar en Bandeja</label>
+                                        <input type="text" id="filterInboxSearch" class="form-control" placeholder="Buscar por placa, conductor, desperfecto...">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha / Hora</th>
+                                            <th>Placa</th>
+                                            <th>Conductor</th>
+                                            <th>Desperfecto Reportado</th>
+                                            <th>Sistema</th>
+                                            <th>Severidad</th>
+                                            <th>Estado</th>
+                                            <th style="text-align: center; min-width: 150px;">Acciones de Coordinación</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="inboxTbody">
+                                        <!-- Rendered dynamically -->
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -681,7 +860,87 @@
         </div>
     </div>
 
+    <!-- D. MODAL LOGIN DE COORDINACIÓN -->
+    <div class="modal" id="loginModal">
+        <div class="login-modal-box">
+            <div class="login-modal-header">
+                <button class="login-modal-close" id="btnCloseLoginModal"><i class="fas fa-times"></i></button>
+                <div class="lock-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h3>Acceso de Coordinación</h3>
+                <p>Ingresa tus credenciales para administrar flota y averías</p>
+            </div>
+            <div class="login-modal-body">
+                <div class="login-error-alert" id="loginErrorAlert">
+                    <i class="fas fa-exclamation-circle"></i> Correo o contraseña incorrectos.
+                </div>
+                <form id="coordinatorLoginForm">
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="loginEmail"><i class="fas fa-envelope"></i> Correo Electrónico</label>
+                        <input type="email" id="loginEmail" class="form-control" required placeholder="coordinador@petro.pe" autocomplete="username">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label for="loginPassword"><i class="fas fa-key"></i> Contraseña</label>
+                        <input type="password" id="loginPassword" class="form-control" required placeholder="••••••••••••" autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn-login-submit">
+                        <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- E. MODAL REVISIÓN / APROBACIÓN DE REPORTE DE CONDUCTOR -->
+    <div class="modal" id="inboxReviewModal">
+        <div class="modal-content" style="max-width: 580px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-check-circle" style="color: var(--primary);"></i> Evaluar Reporte de Conductor</h3>
+                <button class="modal-close closeModalBtn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="inboxReviewDefectId">
+                <div class="driver-summary-box" style="margin-bottom: 1.25rem;">
+                    <div class="driver-summary-row"><span class="label">Fecha / Hora:</span><span class="value" id="reviewModalDateTime">-</span></div>
+                    <div class="driver-summary-row"><span class="label">Conductor:</span><span class="value" id="reviewModalDriver">-</span></div>
+                    <div class="driver-summary-row"><span class="label">Unidad / Placa:</span><span class="value" id="reviewModalPlate">-</span></div>
+                    <div class="driver-summary-row"><span class="label">Sistema / Severidad:</span><span class="value" id="reviewModalSystem">-</span></div>
+                    <div style="margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
+                        <span class="label" style="display: block; font-size: 0.8rem; margin-bottom: 0.25rem;">Descripción de la Falla:</span>
+                        <div id="reviewModalDescription" style="font-weight: 600; color: #0f172a; font-size: 0.92rem;">-</div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="reviewAssignStatus"><i class="fas fa-traffic-light"></i> Estado Oficial al Aprobar</label>
+                    <select id="reviewAssignStatus" class="form-control">
+                        <option value="EN REPORTE">EN REPORTE (Aprobado - En evaluación por patio)</option>
+                        <option value="EN TALLER">EN TALLER (Pasa directo a reparación / Inoperativo)</option>
+                        <option value="PENDIENTE">PENDIENTE (Programado para próximo turno)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="reviewCoordinatorObs"><i class="fas fa-sticky-note"></i> Observaciones de Coordinación (Opcional / Motivo si se deniega)</label>
+                    <input type="text" id="reviewCoordinatorObs" class="form-control" placeholder="Ej: Ingresa a taller a las 14:00 / Falla duplicada / etc.">
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: space-between; gap: 0.75rem;">
+                <button type="button" class="btn btn-danger" id="btnRejectInboxReport">
+                    <i class="fas fa-times-circle"></i> Denegar Reporte
+                </button>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="button" class="btn btn-secondary closeModalBtn">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnApproveInboxReport" style="background-color: #16a34a; border-color: #16a34a;">
+                        <i class="fas fa-check-double"></i> Aprobar Reporte
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript logic link -->
-    <script src="app.js?v=1.3.2" defer></script>
+    <script src="app.js?v=1.4.0" defer></script>
 </body>
 </html>
