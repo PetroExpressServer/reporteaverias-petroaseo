@@ -1607,19 +1607,30 @@ function escapeHtml(str) {
 
 // --- DRIVER PORTAL ---
 function populateDriverPortalSelectors() {
-    const driverSel = document.getElementById("portalDriverName");
-    const plateSel = document.getElementById("portalPlate");
-    if (!driverSel || !plateSel) return;
+    const driverList = document.getElementById("driverNameList");
+    const plateList  = document.getElementById("plateList");
+    if (!driverList || !plateList) return;
+
+    // Llena datalist de conductores (orden alfabético)
     const sortedDrivers = [...state.drivers].sort((a, b) => a.name.localeCompare(b.name));
-    driverSel.innerHTML = '<option value="">-- Selecciona tu Nombre --</option>' +
-        sortedDrivers.map(d => `<option value="${escapeHtml(d.name)}">${escapeHtml(d.name)}</option>`).join("");
-    plateSel.innerHTML = '<option value="">-- Selecciona la Placa --</option>' +
-        state.fleet.map(u => `<option value="${escapeHtml(u.plate)}">${escapeHtml(u.plate)} - ${escapeHtml(u.desc)}</option>`).join("");
+    driverList.innerHTML = sortedDrivers
+        .map(d => `<option value="${escapeHtml(d.name)}">`)
+        .join("");
+
+    // Llena datalist de placas (plate + descripción como sugerencia)
+    plateList.innerHTML = state.fleet
+        .map(u => `<option value="${escapeHtml(u.plate)}" label="${escapeHtml(u.plate)} — ${escapeHtml(u.desc)}">`)
+        .join("");
 }
 
 function resetDriverPortalForm() {
     const form = document.getElementById("driverPortalForm");
     if (form) form.reset();
+    // Limpiar inputs de texto explícitamente
+    const nameInput = document.getElementById("portalDriverName");
+    const plateInput = document.getElementById("portalPlate");
+    if (nameInput) nameInput.value = "";
+    if (plateInput) plateInput.value = "";
     const reportCard = document.getElementById("driverReportCard");
     const successCard = document.getElementById("driverSuccessCard");
     if (reportCard) reportCard.style.display = "block";
@@ -1636,8 +1647,8 @@ async function handleDriverPortalSubmit(e) {
     const now = new Date();
     const dateVal = now.toISOString().slice(0, 10);
     const timeVal = now.toTimeString().slice(0, 5);
-    const driverVal = document.getElementById("portalDriverName").value;
-    const plateVal = document.getElementById("portalPlate").value;
+    const driverVal = document.getElementById("portalDriverName").value.trim();
+    const plateVal = document.getElementById("portalPlate").value.trim().toUpperCase();
     const systemVal = document.getElementById("portalSystem").value;
     const severityVal = document.getElementById("portalSeverity").value;
     const descVal = document.getElementById("portalDescription").value.trim();

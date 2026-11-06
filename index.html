@@ -53,18 +53,33 @@
 
                 <div class="driver-portal-card-body">
                     <form id="driverPortalForm">
+                        <!-- Datalists para autocompletado predictivo -->
+                        <datalist id="driverNameList"></datalist>
+                        <datalist id="plateList"></datalist>
+
                         <div class="form-row">
                             <div class="form-group" style="flex: 1;">
                                 <label for="portalDriverName"><i class="fas fa-user"></i> Conductor a Cargo</label>
-                                <select id="portalDriverName" class="form-control" required>
-                                    <option value="">-- Selecciona tu Nombre --</option>
-                                </select>
+                                <input
+                                    type="text"
+                                    id="portalDriverName"
+                                    class="form-control"
+                                    list="driverNameList"
+                                    placeholder="Escribe tu nombre..."
+                                    autocomplete="off"
+                                    required>
                             </div>
                             <div class="form-group" style="flex: 1;">
                                 <label for="portalPlate"><i class="fas fa-truck"></i> Unidad / Placa</label>
-                                <select id="portalPlate" class="form-control" required>
-                                    <option value="">-- Selecciona la Placa --</option>
-                                </select>
+                                <input
+                                    type="text"
+                                    id="portalPlate"
+                                    class="form-control"
+                                    list="plateList"
+                                    placeholder="Escribe la placa..."
+                                    autocomplete="off"
+                                    style="text-transform: uppercase;"
+                                    required>
                             </div>
                         </div>
 
