@@ -850,23 +850,28 @@ textarea.form-control {
 /* ==========================================================================
    PORTAL CONDUCTOR & LOGIN COORDINACIÓN STYLES
    ========================================================================== */
+/* ============================================================
+   PORTAL DE CONDUCTORES — Mismo design system del dashboard
+   ============================================================ */
+
 .driver-portal-container {
     min-height: 100vh;
     width: 100%;
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    background-color: var(--bg-main);
     display: flex;
     flex-direction: column;
-    color: #f8fafc;
+    color: var(--text-main);
 }
 
 .driver-portal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.25rem 2rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(15, 23, 42, 0.85);
-    backdrop-filter: blur(10px);
+    padding: 0 2rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-card);
+    height: var(--header-height);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
 .driver-portal-logo {
@@ -876,122 +881,145 @@ textarea.form-control {
 }
 
 .driver-portal-logo img {
-    height: 44px;
+    height: 36px;
     width: auto;
     object-fit: contain;
 }
 
 .driver-portal-logo-text h1 {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 800;
     letter-spacing: -0.02em;
-    color: #ffffff;
+    color: var(--text-main);
     margin: 0;
 }
 
 .driver-portal-logo-text p {
-    font-size: 0.75rem;
-    color: #94a3b8;
+    font-size: 0.72rem;
+    color: var(--text-muted);
     margin: 0;
 }
 
 .btn-coordinator-access {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #f1f5f9;
-    padding: 0.55rem 1.15rem;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 0.5rem 1.1rem;
     border-radius: 9999px;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 600;
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.45rem;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: var(--transition);
+    font-family: 'Outfit', sans-serif;
 }
 
 .btn-coordinator-access:hover {
-    background: rgba(217, 20, 57, 0.25);
+    background: var(--primary-light);
     border-color: var(--primary);
-    color: #ffffff;
-    transform: translateY(-1px);
+    color: var(--primary);
 }
 
 .driver-portal-body {
     flex: 1;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     padding: 2.5rem 1rem;
 }
 
 .driver-portal-card {
-    background: #ffffff;
-    color: #1e293b;
+    background: var(--bg-card);
+    color: var(--text-main);
     width: 100%;
-    max-width: 620px;
-    border-radius: 20px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+    max-width: 640px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+    border: 1px solid var(--border);
     overflow: hidden;
 }
 
 .driver-portal-card-header {
-    background: linear-gradient(135deg, #d91439 0%, #b91c1c 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, #b91c1c 100%);
     color: #ffffff;
-    padding: 1.75rem 2rem;
-    text-align: center;
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.driver-portal-card-header .header-icon {
+    width: 44px;
+    height: 44px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
 }
 
 .driver-portal-card-header .header-badge {
     display: inline-block;
     background: rgba(255, 255, 255, 0.2);
-    padding: 0.3rem 0.8rem;
+    padding: 0.2rem 0.65rem;
     border-radius: 9999px;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.5rem;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.3rem;
 }
 
 .driver-portal-card-header h2 {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 800;
     margin: 0;
     color: #ffffff;
 }
 
 .driver-portal-card-header p {
-    font-size: 0.88rem;
-    color: rgba(255, 255, 255, 0.85);
-    margin: 0.35rem 0 0 0;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.82);
+    margin: 0.2rem 0 0 0;
 }
 
 .driver-portal-card-body {
-    padding: 2rem;
+    padding: 1.75rem 2rem;
 }
 
 .btn-portal-submit {
-    background: linear-gradient(135deg, #d91439 0%, #b91c1c 100%);
+    background: var(--primary);
     color: white;
-    font-size: 1.05rem;
+    font-size: 1rem;
     font-weight: 700;
-    padding: 0.95rem 1.5rem;
-    border-radius: 12px;
+    padding: 0.85rem 1.5rem;
+    border-radius: 10px;
     border: none;
     cursor: pointer;
     width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.65rem;
-    box-shadow: 0 10px 20px -5px rgba(217, 20, 57, 0.4);
-    transition: all 0.2s ease;
+    gap: 0.6rem;
+    transition: var(--transition);
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: 0.01em;
 }
 
 .btn-portal-submit:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 15px 25px -5px rgba(217, 20, 57, 0.5);
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(217, 20, 57, 0.3);
+}
+
+.btn-portal-submit:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
 }
 
 /* Success Card */
@@ -1001,8 +1029,8 @@ textarea.form-control {
 }
 
 .success-icon-wrap {
-    width: 76px;
-    height: 76px;
+    width: 70px;
+    height: 70px;
     margin: 0 auto 1.25rem;
     border-radius: 50%;
     background: #dcfce7;
@@ -1010,40 +1038,41 @@ textarea.form-control {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2.4rem;
-    box-shadow: 0 10px 25px -5px rgba(22, 163, 74, 0.3);
+    font-size: 2.2rem;
+    box-shadow: 0 8px 20px rgba(22, 163, 74, 0.2);
 }
 
 .driver-success-card h3 {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     font-weight: 800;
-    color: #0f172a;
-    margin: 0 0 0.5rem 0;
+    color: var(--text-main);
+    margin: 0 0 0.4rem 0;
 }
 
 .driver-success-card p {
-    color: #64748b;
-    font-size: 0.92rem;
-    line-height: 1.5;
-    max-width: 440px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.55;
+    max-width: 420px;
     margin: 0 auto 1.5rem auto;
 }
 
 .driver-summary-box {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 1.1rem;
+    padding: 1rem 1.1rem;
     text-align: left;
-    margin-bottom: 1.75rem;
-    font-size: 0.88rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.87rem;
 }
 
 .driver-summary-row {
     display: flex;
     justify-content: space-between;
+    gap: 1rem;
     padding: 0.35rem 0;
-    border-bottom: 1px dashed #e2e8f0;
+    border-bottom: 1px dashed var(--border);
 }
 
 .driver-summary-row:last-child {
@@ -1051,13 +1080,15 @@ textarea.form-control {
 }
 
 .driver-summary-row .label {
-    color: #64748b;
+    color: var(--text-muted);
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .driver-summary-row .value {
-    color: #0f172a;
+    color: var(--text-main);
     font-weight: 700;
+    text-align: right;
 }
 
 /* Login Modal */
