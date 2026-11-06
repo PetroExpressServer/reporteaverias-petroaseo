@@ -350,10 +350,171 @@ async function syncWithSupabase() {
         }
         
         updateSupabaseStatus(true, "Conectado (Nube)");
+
+        // Iniciar canal en tiempo real para recibir reportes instantáneos de choferes
+        setupSupabaseRealtime();
     } catch (e) {
         console.error("Fallo al sincronizar con Supabase:", e);
         updateSupabaseStatus(true, "Error de Sincronización");
     }
+}
+
+// --- REALTIME ALERTS & NOTIFICATIONS ---
+let realtimeDefectsChannel = null;
+
+function setupSupabaseRealtime() {
+    if (!supabaseClient || realtimeDefectsChannel) return;
+
+    try {
+        realtimeDefectsChannel = supabaseClient
+            .channel('realtime_defects_channel')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'defects' },
+                payload => {
+                    handleRealtimeDefectChange(payload);
+                }
+            )
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log("⚡ Supabase Realtime activo para averías");
+                }
+            });
+    } catch (err) {
+        console.error("Error al suscribir a Supabase Realtime:", err);
+    }
+}
+
+function handleRealtimeDefectChange(payload) {
+    if (!payload) return;
+    const { eventType, new: newRow, old: oldRow } = payload;
+
+    if (eventType === "INSERT" && newRow) {
+        const newDefect = dbDefectToJS(newRow);
+        const exists = state.defects.some(d => d.id === newDefect.id);
+        if (!exists) {
+            state.defects.push(newDefect);
+            saveToLocalStorage();
+            updateDashboardMetrics();
+            renderInboxTable();
+            filterDefectsTable();
+
+            // Notificar sonoramente y con toast flotante si es un reporte que requiere revisión
+            if (newDefect.status === "POR REVISAR") {
+                showRealtimeNotification(newDefect);
+            }
+        }
+    } else if (eventType === "UPDATE" && newRow) {
+        const updatedDefect = dbDefectToJS(newRow);
+        const idx = state.defects.findIndex(d => d.id === updatedDefect.id);
+        if (idx !== -1) {
+            state.defects[idx] = updatedDefect;
+            saveToLocalStorage();
+            updateDashboardMetrics();
+            renderInboxTable();
+            filterDefectsTable();
+        }
+    } else if (eventType === "DELETE" && oldRow) {
+        const idToDelete = oldRow.id;
+        state.defects = state.defects.filter(d => d.id !== idToDelete);
+        saveToLocalStorage();
+        updateDashboardMetrics();
+        renderInboxTable();
+        filterDefectsTable();
+    }
+}
+
+// Generador de sonido armónico sutil con Web Audio API (sin archivos externos)
+function playNotificationSound() {
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+
+        // Tono 1
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+        gain1.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(ctx.currentTime);
+        osc1.stop(ctx.currentTime + 0.3);
+
+        // Tono 2 (armónico)
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.1); // A5
+        gain2.gain.setValueAtTime(0.15, ctx.currentTime + 0.1);
+        gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.48);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(ctx.currentTime + 0.1);
+        osc2.stop(ctx.currentTime + 0.48);
+    } catch (e) {
+        console.log("Audio not allowed yet by browser autoplay policy");
+    }
+}
+
+// Mostrar Toast flotante interactivo
+function showRealtimeNotification(d) {
+    const container = document.getElementById("realtimeToastContainer");
+    if (!container) return;
+
+    playNotificationSound();
+
+    const toast = document.createElement("div");
+    toast.className = "realtime-toast";
+    toast.innerHTML = `
+        <div class="toast-icon">
+            <i class="fas fa-bell"></i>
+        </div>
+        <div class="toast-content">
+            <div class="toast-title">
+                <span>¡Nuevo Reporte de Conductor!</span>
+                <button type="button" class="toast-close-btn" title="Cerrar">&times;</button>
+            </div>
+            <div class="toast-desc">
+                <strong>${escapeHtml(d.plate)}</strong> &bull; ${escapeHtml(d.system || 'Avería')} (${escapeHtml(d.severity || 'Normal')})
+                <br>
+                <span style="font-size:0.73rem; opacity:0.85;">Chofer: ${escapeHtml(d.driver || 'No especificado')}</span>
+            </div>
+            <button type="button" class="toast-action-btn">
+                <i class="fas fa-inbox"></i> Ver en Bandeja
+            </button>
+        </div>
+    `;
+
+    // Redirigir a bandeja de entrada
+    toast.querySelector(".toast-action-btn").addEventListener("click", () => {
+        const inboxMenu = document.querySelector('.menu-item[data-target="inbox"]');
+        if (inboxMenu) {
+            document.querySelectorAll(".menu-item").forEach(mi => mi.classList.remove("active"));
+            inboxMenu.classList.add("active");
+        }
+        switchPane("inbox");
+        toast.classList.add("closing");
+        setTimeout(() => toast.remove(), 280);
+    });
+
+    // Cerrar manualmente
+    toast.querySelector(".toast-close-btn").addEventListener("click", () => {
+        toast.classList.add("closing");
+        setTimeout(() => toast.remove(), 280);
+    });
+
+    container.appendChild(toast);
+
+    // Auto-cierre
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.classList.add("closing");
+            setTimeout(() => toast.remove(), 280);
+        }
+    }, 7000);
 }
 
 function saveToLocalStorage() {
@@ -483,6 +644,16 @@ function setupEventListeners() {
     if (btnRejectInbox) {
         btnRejectInbox.addEventListener("click", handleRejectInboxReport);
     }
+
+    // MATRIX FLEET FILTERS
+    document.querySelectorAll(".btn-matrix-filter").forEach(btn => {
+        btn.addEventListener("click", () => {
+            document.querySelectorAll(".btn-matrix-filter").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            currentFleetMatrixFilter = btn.getAttribute("data-filter") || "TODAS";
+            renderLiveFleetMatrix();
+        });
+    });
 
     // Close Modals
     document.querySelectorAll(".closeModalBtn").forEach(btn => {
@@ -705,6 +876,263 @@ function updateDashboardMetrics() {
     document.getElementById("statInoperativeUnits").innerText = inoperativeCount;
     document.getElementById("statActiveDefects").innerText = activeDefects;
     document.getElementById("statAvailabilityRate").innerText = availabilityRate + "%";
+
+    // NUEVO: Renderizar Alertas Operativas y Matriz de Flota en Tiempo Real
+    renderLiveFleetMatrix();
+    renderDashboardRecurrenceAlerts();
+}
+
+// Filtro activo para la matriz de flota
+let currentFleetMatrixFilter = "TODAS";
+
+function renderLiveFleetMatrix() {
+    const grid = document.getElementById("liveFleetGrid");
+    if (!grid) return;
+
+    const units = state.fleet || [];
+    let countOp = 0;
+    let countObs = 0;
+    let countInop = 0;
+
+    const unitDetails = units.map(u => {
+        // Buscar defectos activos de la unidad (excluyendo DENEGADO y REPARADO)
+        const activeDefects = state.defects.filter(d => 
+            d.plate === u.plate && 
+            d.status !== "REPARADO" && 
+            d.status !== "DENEGADO"
+        );
+
+        let opStatus = "OPERATIVA";
+        let statusBadgeClass = "badge-op";
+        let cardClass = "status-op";
+        let statusText = "Operativa";
+        let activeIssue = "En operación normal";
+
+        if (activeDefects.some(d => d.status === "EN TALLER")) {
+            opStatus = "INOPERATIVA";
+            statusBadgeClass = "badge-inop";
+            cardClass = "status-inop";
+            statusText = "En Taller";
+            countInop++;
+            const tallerDef = activeDefects.find(d => d.status === "EN TALLER");
+            activeIssue = tallerDef ? `${tallerDef.system} (${tallerDef.severity})` : "En Taller Mecánico";
+        } else if (activeDefects.some(d => d.status === "POR REVISAR" || d.status === "EN REPORTE" || d.status === "PENDIENTE")) {
+            opStatus = "EN_OBSERVACION";
+            statusBadgeClass = "badge-obs";
+            cardClass = "status-obs";
+            const isPorRev = activeDefects.some(d => d.status === "POR REVISAR");
+            statusText = isPorRev ? "Por Revisar" : "En Reporte";
+            countObs++;
+            const obsDef = activeDefects[0];
+            activeIssue = obsDef ? `${obsDef.system} (${obsDef.severity})` : "En Observación";
+        } else {
+            countOp++;
+        }
+
+        return {
+            plate: u.plate,
+            desc: u.desc || "Compactadora",
+            opStatus,
+            statusBadgeClass,
+            cardClass,
+            statusText,
+            activeIssue,
+            activeCount: activeDefects.length
+        };
+    });
+
+    // Actualizar contadores de los botones de filtro
+    const totalEl = document.getElementById("matrixCountTotal");
+    const opEl = document.getElementById("matrixCountOp");
+    const obsEl = document.getElementById("matrixCountObs");
+    const inopEl = document.getElementById("matrixCountInop");
+    if (totalEl) totalEl.textContent = units.length;
+    if (opEl) opEl.textContent = countOp;
+    if (obsEl) obsEl.textContent = countObs;
+    if (inopEl) inopEl.textContent = countInop;
+
+    // Filtrar según botón seleccionado
+    const filteredUnits = unitDetails.filter(u => {
+        if (currentFleetMatrixFilter === "TODAS") return true;
+        return u.opStatus === currentFleetMatrixFilter;
+    });
+
+    if (filteredUnits.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.9rem;">
+                <i class="fas fa-info-circle" style="margin-right: 0.35rem;"></i> No hay unidades en este estado seleccionado (${currentFleetMatrixFilter}).
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = filteredUnits.map(u => `
+        <div class="fleet-unit-card ${u.cardClass}" data-plate="${escapeHtml(u.plate)}" title="Clic para ver historial completo de ${escapeHtml(u.plate)}">
+            <div class="fleet-unit-header">
+                <div>
+                    <div class="fleet-unit-plate">
+                        <i class="fas fa-truck" style="font-size: 0.85rem; margin-right: 0.25rem; opacity: 0.6;"></i>
+                        ${escapeHtml(u.plate)}
+                    </div>
+                    <div class="fleet-unit-desc">${escapeHtml(u.desc)}</div>
+                </div>
+                <span class="fleet-unit-badge ${u.statusBadgeClass}">
+                    <span class="dot-status ${u.opStatus === 'OPERATIVA' ? 'dot-green' : (u.opStatus === 'INOPERATIVA' ? 'dot-red' : 'dot-yellow')}"></span>
+                    ${u.statusText}
+                </span>
+            </div>
+            <div class="fleet-unit-footer">
+                <span class="fleet-unit-issue" title="${escapeHtml(u.activeIssue)}">
+                    <i class="fas fa-wrench" style="font-size: 0.7rem; margin-right: 0.2rem; opacity: 0.7;"></i>
+                    ${escapeHtml(u.activeIssue)}
+                </span>
+                <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600;">
+                    ${u.activeCount > 0 ? `<span style="color:var(--primary);">${u.activeCount} avería(s)</span>` : '<span style="color:#10b981;">0 fallas</span>'}
+                </span>
+            </div>
+        </div>
+    `).join("");
+
+    // Event listener al hacer clic en cualquier tarjeta para abrir su historial
+    grid.querySelectorAll(".fleet-unit-card").forEach(card => {
+        card.addEventListener("click", () => {
+            const plate = card.getAttribute("data-plate");
+            if (plate) {
+                // Cambiar a la pestaña de historial
+                const histMenu = document.querySelector('.menu-item[data-target="historial"]');
+                if (histMenu) {
+                    document.querySelectorAll(".menu-item").forEach(mi => mi.classList.remove("active"));
+                    histMenu.classList.add("active");
+                }
+                switchPane("historial");
+                const sel = document.getElementById("historyPlateSelect");
+                if (sel) {
+                    sel.value = plate;
+                    handleHistorySearch();
+                }
+            }
+        });
+    });
+}
+
+function renderDashboardRecurrenceAlerts() {
+    const container = document.getElementById("dashboardRecurrenceContainer");
+    if (!container) return;
+
+    // Calcular fallas de los últimos 45 días
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 45);
+    const cutoffStr = cutoffDate.toISOString().slice(0, 10);
+
+    const recentDefects = state.defects.filter(d => 
+        d.status !== "DENEGADO" && 
+        d.dateReport >= cutoffStr
+    );
+
+    // Contar combinaciones de (placa + sistema)
+    const recurrenceMap = {};
+    recentDefects.forEach(d => {
+        if (!d.plate || !d.system) return;
+        const key = `${d.plate}__${d.system}`;
+        if (!recurrenceMap[key]) {
+            recurrenceMap[key] = {
+                plate: d.plate,
+                system: d.system,
+                count: 0,
+                hasGrave: false,
+                lastReportDate: d.dateReport
+            };
+        }
+        recurrenceMap[key].count++;
+        if (d.severity === "GRAVE") recurrenceMap[key].hasGrave = true;
+        if (d.dateReport > recurrenceMap[key].lastReportDate) recurrenceMap[key].lastReportDate = d.dateReport;
+    });
+
+    // Filtrar los que tienen 2 o más fallas repetidas en el mismo sistema
+    const alerts = Object.values(recurrenceMap)
+        .filter(item => item.count >= 2)
+        .sort((a, b) => b.count - a.count);
+
+    // Si no hay alertas de reincidencia, verificar si hay alguna avería GRAVE activa
+    const activeGraveDefects = state.defects.filter(d => 
+        d.severity === "GRAVE" && 
+        d.status !== "REPARADO" && 
+        d.status !== "DENEGADO"
+    );
+
+    if (alerts.length === 0 && activeGraveDefects.length === 0) {
+        container.innerHTML = `
+            <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 0.9rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; color: #475569; font-size: 0.86rem;">
+                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                    <i class="fas fa-shield-alt" style="color: #10b981; font-size: 1.15rem;"></i>
+                    <span><strong>Salud Operativa de Flota Óptima:</strong> Sin reincidencias críticas de sistemas en los últimos 45 días.</span>
+                </div>
+                <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">Monitoreo Continuo</span>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="recurrence-box">
+            <div class="recurrence-box-header">
+                <div class="recurrence-box-title">
+                    <i class="fas fa-exclamation-triangle" style="color: #ea580c; font-size: 1.1rem;"></i>
+                    Detección Temprana de Reincidencia & Fallas Críticas
+                </div>
+                <span style="font-size: 0.75rem; color: #9a3412; font-weight: 700; background: #ffedd5; padding: 0.2rem 0.6rem; border-radius: 20px;">
+                    ${alerts.length} reincidencia(s) detectada(s)
+                </span>
+            </div>
+            <div class="recurrence-items-grid">
+                ${alerts.slice(0, 4).map(a => `
+                    <div class="recurrence-card">
+                        <div class="recurrence-card-info">
+                            <strong><i class="fas fa-truck"></i> ${escapeHtml(a.plate)}</strong>
+                            <p>
+                                <span style="color:#c2410c; font-weight:700;">${a.count} averías</span> en sistema <strong>${escapeHtml(a.system)}</strong>
+                                ${a.hasGrave ? ' <span style="color:#d91439; font-weight:800;">[Crítico]</span>' : ''}
+                            </p>
+                        </div>
+                        <button type="button" class="btn-quick-hist" data-plate="${escapeHtml(a.plate)}">
+                            Historial &rsaquo;
+                        </button>
+                    </div>
+                `).join("")}
+                ${activeGraveDefects.length > 0 && alerts.length < 4 ? activeGraveDefects.slice(0, 2).map(g => `
+                    <div class="recurrence-card" style="border-left: 3px solid #d91439; background: #fff5f5;">
+                        <div class="recurrence-card-info">
+                            <strong style="color: #d91439;"><i class="fas fa-fire"></i> ${escapeHtml(g.plate)}: Falla Grave Activa</strong>
+                            <p>${escapeHtml(g.system)} — ${escapeHtml(g.description).slice(0, 38)}...</p>
+                        </div>
+                        <button type="button" class="btn-quick-hist" data-plate="${escapeHtml(g.plate)}" style="border-color:#fca5a5; color:#b91c1c;">
+                            Ver &rsaquo;
+                        </button>
+                    </div>
+                `).join("") : ''}
+            </div>
+        </div>
+    `;
+
+    // Asignar listeners a los botones de historial rápido
+    container.querySelectorAll(".btn-quick-hist").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const plate = btn.getAttribute("data-plate");
+            if (plate) {
+                const histMenu = document.querySelector('.menu-item[data-target="historial"]');
+                if (histMenu) {
+                    document.querySelectorAll(".menu-item").forEach(mi => mi.classList.remove("active"));
+                    histMenu.classList.add("active");
+                }
+                switchPane("historial");
+                const sel = document.getElementById("historyPlateSelect");
+                if (sel) {
+                    sel.value = plate;
+                    handleHistorySearch();
+                }
+            }
+        });
+    });
 }
 
 function renderDashboardCharts() {
@@ -1679,6 +2107,8 @@ async function handleDriverPortalSubmit(e) {
 
     state.defects.push(newReport);
     saveToLocalStorage();
+    updateDashboardMetrics();
+    renderInboxTable();
 
     if (supabaseClient) {
         supabaseClient.from('defects').insert(jsDefectToDB(newReport)).then(({ error }) => {

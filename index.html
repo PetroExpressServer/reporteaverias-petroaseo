@@ -280,6 +280,45 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- NUEVO: Panel de Detección de Reincidencias y Fallas Críticas -->
+                    <div id="dashboardRecurrenceSection" class="dashboard-recurrence-wrap" style="margin-top: 1.5rem;">
+                        <!-- Se llena dinámicamente con alertas si hay reincidencia o fallas críticas -->
+                        <div id="dashboardRecurrenceContainer"></div>
+                    </div>
+
+                    <!-- NUEVO: Matriz de Estado Operativo de Compactas en Tiempo Real -->
+                    <div class="card" style="margin-top: 1.5rem;" id="liveFleetMatrixCard">
+                        <div class="card-header" style="flex-wrap: wrap; gap: 0.75rem;">
+                            <div>
+                                <span class="card-title">
+                                    <i class="fas fa-th-large" style="color: var(--primary);"></i> Matriz de Estado de Flota en Tiempo Real
+                                </span>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                                    Monitoreo interactivo de cada compacta: Operatividad, fallas activas y acceso directo a su historial.
+                                </div>
+                            </div>
+                            <div class="fleet-matrix-filters" id="fleetMatrixFilterBtns">
+                                <button type="button" class="btn-matrix-filter active" data-filter="TODAS">
+                                    Todas (<span id="matrixCountTotal">0</span>)
+                                </button>
+                                <button type="button" class="btn-matrix-filter filter-op" data-filter="OPERATIVA">
+                                    <span class="dot-status dot-green"></span> Operativas (<span id="matrixCountOp">0</span>)
+                                </button>
+                                <button type="button" class="btn-matrix-filter filter-rep" data-filter="EN_OBSERVACION">
+                                    <span class="dot-status dot-yellow"></span> En Reporte/Obs (<span id="matrixCountObs">0</span>)
+                                </button>
+                                <button type="button" class="btn-matrix-filter filter-inop" data-filter="INOPERATIVA">
+                                    <span class="dot-status dot-red"></span> En Taller / Inop (<span id="matrixCountInop">0</span>)
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body" style="padding: 1.25rem;">
+                            <div class="fleet-status-grid" id="liveFleetGrid">
+                                <!-- Tarjetas de compactas generadas dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
                 <!-- BANDEJA DE ENTRADA: REPORTES DE CONDUCTORES (PRE-APROBACIÓN) -->
@@ -936,7 +975,10 @@
         </div>
     </div>
 
+    <!-- CONTENEDOR FLOTANTE PARA ALERTAS EN TIEMPO REAL -->
+    <div id="realtimeToastContainer" class="realtime-toast-container"></div>
+
     <!-- JavaScript logic link -->
-    <script src="app.js?v=1.4.0" defer></script>
+    <script src="app.js?v=1.5.0" defer></script>
 </body>
 </html>
