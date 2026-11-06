@@ -23,18 +23,14 @@
          PORTAL DE REPORTES PARA CONDUCTORES (PANTALLA DE CARGA INICIAL)
          ========================================================================== -->
     <div id="driverPortalSection" class="driver-portal-container">
-        <!-- Top bar del portal -->
+        <!-- Header: solo logo en caja, sin texto -->
         <header class="driver-portal-header">
             <div class="driver-portal-logo">
-                <img src="logo.png" alt="Petroaseo Logo">
-                <div class="driver-portal-logo-text">
-                    <h1>PETROASEO</h1>
-                    <p>Portal de Reportes de Conductores</p>
-                </div>
+                <img src="logo.png" alt="Petroaseo">
             </div>
             <button class="btn-coordinator-access" id="btnOpenLoginModal">
                 <i class="fas fa-lock"></i>
-                <span>Acceso Coordinación</span>
+                <span>Coordinación</span>
             </button>
         </header>
 
@@ -43,11 +39,10 @@
             <!-- Tarjeta del formulario -->
             <div class="driver-portal-card" id="driverReportCard">
                 <div class="driver-portal-card-header">
-                    <div class="header-icon"><i class="fas fa-tools"></i></div>
+                    <i class="fas fa-calendar-alt" style="color: var(--primary); font-size: 1.4rem; margin-right: 0.6rem;"></i>
                     <div>
-                        <span class="header-badge">Mantenimiento y Patio</span>
                         <h2>Reporte de Avería de Unidad</h2>
-                        <p>Completa los datos del vehículo y el desperfecto presentado.</p>
+                        <p>Selecciona tu nombre, tu unidad y describe la falla.</p>
                     </div>
                 </div>
 
@@ -57,36 +52,24 @@
                         <datalist id="driverNameList"></datalist>
                         <datalist id="plateList"></datalist>
 
-                        <div class="form-row">
-                            <div class="form-group" style="flex: 1;">
-                                <label for="portalDriverName"><i class="fas fa-user"></i> Conductor a Cargo</label>
-                                <input
-                                    type="text"
-                                    id="portalDriverName"
-                                    class="form-control"
-                                    list="driverNameList"
-                                    placeholder="Escribe tu nombre..."
-                                    autocomplete="off"
-                                    required>
-                            </div>
-                            <div class="form-group" style="flex: 1;">
-                                <label for="portalPlate"><i class="fas fa-truck"></i> Unidad / Placa</label>
-                                <input
-                                    type="text"
-                                    id="portalPlate"
-                                    class="form-control"
-                                    list="plateList"
-                                    placeholder="Escribe la placa..."
-                                    autocomplete="off"
-                                    style="text-transform: uppercase;"
-                                    required>
-                            </div>
+                        <div class="dp-form-group">
+                            <label for="portalDriverName">Tu Nombre (Conductor):</label>
+                            <input type="text" id="portalDriverName" class="dp-input"
+                                list="driverNameList" placeholder="Escribe tu nombre..."
+                                autocomplete="off" required>
                         </div>
 
-                        <div class="form-row">
-                            <div class="form-group" style="flex: 1;">
-                                <label for="portalSystem"><i class="fas fa-cogs"></i> Sistema Afectado</label>
-                                <select id="portalSystem" class="form-control" required>
+                        <div class="dp-form-group">
+                            <label for="portalPlate">Unidad / Placa:</label>
+                            <input type="text" id="portalPlate" class="dp-input"
+                                list="plateList" placeholder="Escribe la placa..."
+                                autocomplete="off" style="text-transform:uppercase;" required>
+                        </div>
+
+                        <div class="dp-form-row">
+                            <div class="dp-form-group">
+                                <label for="portalSystem">Sistema Afectado:</label>
+                                <select id="portalSystem" class="dp-input" required>
                                     <option value="HIDRÁULICO">HIDRÁULICO</option>
                                     <option value="ELÉCTRICO">ELÉCTRICO</option>
                                     <option value="MOTOR">MOTOR</option>
@@ -100,9 +83,9 @@
                                     <option value="OTRO">OTRO</option>
                                 </select>
                             </div>
-                            <div class="form-group" style="flex: 1;">
-                                <label for="portalSeverity"><i class="fas fa-exclamation-triangle"></i> Severidad</label>
-                                <select id="portalSeverity" class="form-control" required>
+                            <div class="dp-form-group">
+                                <label for="portalSeverity">Severidad:</label>
+                                <select id="portalSeverity" class="dp-input" required>
                                     <option value="LEVE">LEVE — Puede continuar con precaución</option>
                                     <option value="MODERADO" selected>MODERADO — Requiere atención próxima</option>
                                     <option value="GRAVE">GRAVE — Unidad detenida / Inoperativa</option>
@@ -110,14 +93,14 @@
                             </div>
                         </div>
 
-                        <div class="form-group" style="margin-bottom: 1.5rem;">
-                            <label for="portalDescription"><i class="fas fa-comment-alt"></i> Detalle de la Avería o Falla</label>
-                            <textarea id="portalDescription" class="form-control" rows="3" required
-                                placeholder="Describe con claridad la falla observada (ej: Fuga de hidrolina por manguera del lifther, sonido extraño en caja, etc.)..."></textarea>
+                        <div class="dp-form-group">
+                            <label for="portalDescription">Descripción de la Falla:</label>
+                            <textarea id="portalDescription" class="dp-input" rows="3" required
+                                placeholder="Describe la falla con claridad (ej: Fuga de hidrolina, ruido en caja, etc.)..."></textarea>
                         </div>
 
                         <button type="submit" class="btn-portal-submit" id="btnSubmitPortalReport">
-                            <i class="fas fa-paper-plane"></i> Enviar Reporte de Avería
+                            Enviar Reporte &nbsp;&rsaquo;
                         </button>
                     </form>
                 </div>
@@ -129,16 +112,11 @@
                     <div class="success-icon-wrap">
                         <i class="fas fa-check"></i>
                     </div>
-                    <h3>¡Reporte Enviado con Éxito!</h3>
-                    <p>Tu reporte fue registrado y enviado al área de Coordinación para su revisión y asignación a taller.</p>
-
-                    <div class="driver-summary-box" id="driverSuccessSummary">
-                        <!-- Generado dinámicamente -->
-                    </div>
-
-                    <button type="button" class="btn btn-primary" id="btnNewDriverReport"
-                        style="padding: 0.8rem 1.75rem; font-weight: 700; border-radius: 10px;">
-                        <i class="fas fa-plus"></i> Registrar Otro Reporte
+                    <h3>¡Reporte Enviado!</h3>
+                    <p>Tu reporte fue registrado y enviado a Coordinación para revisión.</p>
+                    <div class="driver-summary-box" id="driverSuccessSummary"></div>
+                    <button type="button" id="btnNewDriverReport" class="btn-portal-submit" style="max-width:280px; margin: 0 auto;">
+                        <i class="fas fa-plus"></i> Nuevo Reporte
                     </button>
                 </div>
             </div>
